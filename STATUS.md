@@ -1,7 +1,7 @@
 # STATUS — Idealize AI
 
-**Fase atual:** G — canal WhatsApp do agente financeiro instalado e **DESLIGADO** (v0.4.0); aguardando decisão do Diego para ligar em modo sombra
-**Último estado validado:** 26/10/2026 — `fin` v0.4.0 · local 221 testes SQL (78 + 71 + 8 + 27 + 37) + concorrência + 11 Deno, 0 falhas · Supabase: travas do canal conferidas
+**Fase atual:** Painel administrativo (v0.5.0) — camada de acesso aplicada no Supabase, painel pronto e **não publicado**; nada rodando (decisão do Diego). Etapa G instalada e desligada.
+**Último estado validado:** 26/10/2026 — v0.5.0 · 324 testes SQL + concorrência + 11 Deno + 10 unidade + 16 navegador, 0 falhas · Supabase: 41 funções idênticas às testadas, nada rodando
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
 
@@ -28,6 +28,9 @@
       (`20261026150000`, 27 testes)
 - [x] G (instalado, desligado) — canal WhatsApp: `20261026160000` + edge functions `fin-whatsapp-webhook` e `fin-worker`
       (37 testes SQL + 11 Deno, incluindo ponta a ponta com Postgres real) — `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`
+- [x] Painel administrativo (§4.1, §17, §21) — camada de acesso `20261026170000` aplicada (100 testes SQL), front em
+      `painel/` (React; login + 2FA obrigatório), revisão de segurança independente tratada, ADR 0003 —
+      `docs/evidencias/2026-10-26_painel_supabase.md`. **Não publicado** (decisão do Diego).
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
@@ -62,7 +65,8 @@
 - Perna de transferência sem extrato era rotulada como "comprovante sem pagamento".
 
 ## Próxima ação
-Ligar a Etapa G só com "PODE FAZER" do Diego, nesta ordem (checklist em `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`):
+Abrir o painel quando o Diego decidir: login no Supabase Auth + cadastro público desligado → publicar na Vercel →
+vincular o login. Ligar a Etapa G só com "PODE FAZER" do Diego, nesta ordem (checklist em `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`):
 segredos → apontar o webhook → agendar o worker → ativar agente → `fin.whatsapp.ativo=true` (com `responder=false`,
 modo sombra, em paralelo ao Finance AI). Depois: painel de pendências e liberação gradual por unidade.
 
