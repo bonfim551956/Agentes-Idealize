@@ -42,7 +42,7 @@ export function Laboratorio() {
         const l = q.data!;
         const ativas = l.etapas.filter((e) => e.situacao !== "encerrada");
         const alertas = l.alertas.filter((a) => !tipo || a.tipo === tipo);
-        const naoConfirmadas = l.etapas.some((e) => !e.confirmada);
+        const naoConfirmadas = l.etapas.filter((e) => !e.confirmada).map((e) => e.nome);
         return (
           <>
             <div role="status" className={cx("mb-8 rounded-grande border px-6 py-4 text-sm",
@@ -50,7 +50,7 @@ export function Laboratorio() {
               {l.sincronizacao.ativa && l.sincronizacao.agente === "ativo"
                 ? <>Sincronizando com o kanban. Última leitura {relativo(l.sincronizacao.ultima?.em)}.</>
                 : <span className="font-bold">Agente desligado: os números abaixo são da última leitura{l.sincronizacao.ultima ? ` (${relativo(l.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
-              {naoConfirmadas && <p className="mt-1">Os nomes das etapas ainda não foram conferidos com o kanban.</p>}
+              {naoConfirmadas.length > 0 && <p className="mt-1">Ainda sem nome conferido: {naoConfirmadas.join(", ")}.</p>}
             </div>
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">

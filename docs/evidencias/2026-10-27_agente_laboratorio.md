@@ -25,8 +25,8 @@ funções `lab.*` não expostas · anon sem `painel_lab` · auditoria íntegra.
 362+ testes SQL (38 do laboratório), concorrência, 11 + 5 Deno, 17 de navegador — sem falhas.
 
 ## Para ligar (cada passo com PODE FAZER)
-1. Diego confirma os nomes das etapas (e o que é a coluna 8) e os limites de "parado" por etapa.
-2. **No Sistema ADM**: aplicar `docs/adm/lab_leitura.sql` (visão sem dados pessoais + usuário só leitura).
+1. [feito 26/10] Etapas confirmadas; "Aguardando lentes" parado após 4 dias. Coluna 8 segue sem nome.
+2. [feito 26/10, PODE FAZER] Visão sem dados pessoais + usuário só leitura criados no ADM, SEM senha (conferido: lê só a visão).
 3. Segredos no Idealize: `ADM_LEITURA_DB_URL` e `LAB_WORKER_SECRET`; agendar o `lab-sync` (ex.: a cada 15 min).
 4. Ativar o agente no painel e `lab.sync.ativo = true`.
 5. Fase 2: conferência no portal WebPedidos da Braslab (navegador; precisa de login e de onde rodar o navegador).

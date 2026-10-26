@@ -1,5 +1,6 @@
 -- =============================================================================
--- PROPOSTA — NÃO APLICADA. Roda no projeto "Sistema ADM" (não no Idealize) e só com "PODE FAZER" do Diego.
+-- APLICADO no Sistema ADM em 26/10/2026 com "PODE FAZER" do Diego (via SQL, sem registrar migração no ADM).
+-- O usuário foi criado SEM senha: o Diego define a senha no painel do Supabase na hora de ligar o agente.
 -- Dá ao agente de Laboratório acesso SÓ DE LEITURA ao kanban, por uma visão SEM dados pessoais
 -- (sem cliente, telefone, receita, valores ou pagamentos). Não altera nenhuma tabela existente.
 -- =============================================================================
@@ -21,11 +22,11 @@ from public.os_cards c;
 
 -- Usuário próprio, só leitura, só esta visão. A senha é gerada na hora e vai direto para o segredo
 -- ADM_LEITURA_DB_URL das funções do projeto Idealize (nunca no Git, nunca no chat).
--- create role idealize_ai_leitor login password '<gerar>' connection limit 3;
--- alter role idealize_ai_leitor set default_transaction_read_only = on;
--- alter role idealize_ai_leitor set statement_timeout = '15s';
--- grant usage on schema idealize_ai to idealize_ai_leitor;
--- grant select on idealize_ai.lab_os to idealize_ai_leitor;
+create role idealize_ai_leitor login connection limit 3;  -- sem senha até o Diego definir
+alter role idealize_ai_leitor set default_transaction_read_only = on;
+alter role idealize_ai_leitor set statement_timeout = '15s';
+grant usage on schema idealize_ai to idealize_ai_leitor;
+grant select on idealize_ai.lab_os to idealize_ai_leitor;
 -- (anon/authenticated do ADM não recebem nada: a visão não é exposta pela API)
 revoke all on idealize_ai.lab_os from public;
 do $$ begin
