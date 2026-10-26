@@ -14,5 +14,7 @@ echo "→ testes"
 $P -f tests/10_core_tests.sql
 echo "→ testes financeiros"
 $P -f tests/20_fin_tests.sql
+echo "→ testes de conciliação por documento"
+$P -f tests/30_fin_conciliacao_documento.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh

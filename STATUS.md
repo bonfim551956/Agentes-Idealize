@@ -1,7 +1,7 @@
 # STATUS — Idealize AI
 
-**Fase atual:** D/E concluídas — modelo financeiro, extrato, conciliação, caixa×DRE, fechamento e validador independente aplicados e validados no Supabase "Idealize" (`upkxaovgutzgackexhax`)
-**Último estado validado:** 26/10/2026 — `core` v0.1.1 + `fin` v0.2.0 · local: 78/78 + 71/71 + concorrência · Supabase: smoke 10/10 (core) e 13/13 (fin)
+**Fase atual:** F em andamento — homologação em modo observação com o extrato real de SV concluída (205/205 movimentos, 104/104 lançamentos do Finance AI); aguardando decisões de classificação do Diego
+**Último estado validado:** 26/10/2026 14:10 — `fin` v0.2.2 · local 78 + 71 + 8 + concorrência · Supabase: dados reais de SV out/2026 validados por script independente
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
 
@@ -18,6 +18,11 @@
 - [x] E — 71 testes financeiros (12 cenários do §19) + validador independente pelo extrato
 - [x] ADR 0002 — regras financeiras (`docs/adr/0002-regras-financeiras.md`)
 - [x] Aplicado no Supabase Idealize; smoke 13/13 (`docs/evidencias/2026-10-26_supabase_financeiro.md`)
+- [x] v0.2.1 — conciliação por código do comprovante e por CPF/CNPJ na descrição do banco (`20261026140000`)
+- [x] v0.2.2 — correção E2E × FITID achada na homologação (`20261026141500`) + teste de regressão
+- [x] Cadastro de produção (`supabase/seed/producao_cadastro.sql`) + regras de pessoas fora do Git
+- [x] F (observação) — extrato Sicredi SV 01–26/10 + Finance AI: 205/205 e 104/104, validador independente ok
+      (`docs/evidencias/2026-10-26_homologacao_sicredi_sv.md`)
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
@@ -40,11 +45,12 @@
 - Cadeia de hash da auditoria quebrava sob concorrência (id sorteado antes do lock). Corrigido: id atribuído dentro do trigger, sob lock, sequência sem lacunas.
 
 ## Bloqueios / decisões pendentes (dono: Diego)
-1. Tornar o repositório Agentes-Idealize **privado** (ainda público em 26/10 08:45)
+1. Repositório público até o fim do projeto (decisão do Diego). Por isso dados pessoais ficam só em `dados_privados/`.
 2. Correção de controle de acesso no sistema legado (crítico — ver documento interno)
-3. Entradas via importação de extrato
-4. Confirmar unidades, empresas e contas reais para cadastro
-5. Enviar extrato Sicredi de out/2026 (OFX ou CSV) para a homologação
+3. Decisões da homologação: R M Comércio (despesa × transferência), Sicredi R$ 4.165,55 (tarifa × fatura de cartão),
+   devolução do boleto da Micheli (estorno), 4 conflitos comprovante × regra, regra de colaborador ampla demais
+4. Saldo da conta em 30/09 para validar a abertura
+5. Extratos das outras contas/unidades para estender a homologação
 
 ## Defeitos encontrados e corrigidos pelos testes financeiros
 - Pendências sem vínculo colidiam entre unidades (saldo divergente de uma unidade reaproveitava a de outra).
@@ -53,9 +59,9 @@
 - Perna de transferência sem extrato era rotulada como "comprovante sem pagamento".
 
 ## Próxima ação
-F — homologação em modo observação: cadastrar unidades/contas reais (após confirmação), importar o extrato
-Sicredi de outubro de São Vicente e comparar com os 133 lançamentos do Finance AI atual (só leitura no ADM).
-Depois: G — ligar o robô do WhatsApp ao `fin` (adaptador Z-API), painel e liberação gradual.
+Aplicar as decisões do Diego (regras e reclassificações, com auditoria) e reprocessar outubro de SV.
+Depois: G — ligar o robô do WhatsApp ao `fin` em paralelo ao Finance AI (adaptador Z-API, só leitura do grupo),
+painel de pendências e liberação gradual por unidade.
 
 ## Riscos
 Ver `docs/DIAGNOSTICO.md` §4.
