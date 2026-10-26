@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens (RGB sem vírgula para o Tailwind aplicar opacidade). Contrastes conferidos para WCAG AA. */
+:root {
+  --fundo: 245 245 245;        /* #F5F5F5 */
+  --superficie: 250 250 250;   /* #FAFAFA */
+  --elevada: 238 240 241;      /* #EEF0F1 — áreas recuadas */
+  --tinta: 26 26 26;           /* #1A1A1A */
+  --suave: 87 92 97;           /* #575C61  6.6:1 */
+  --linha: 218 221 224;        /* #DADDE0 */
+  --lente: 36 85 107;          /* #24556B  azul-lente 7.6:1 */
+  --lente-forte: 36 85 107;
+  --lente-clara: 226 237 242;  /* #E2EDF2 */
+  --ok: 46 107 79;             /* #2E6B4F */
+  --ok-fundo: 227 240 233;
+  --atencao: 138 90 0;         /* #8A5A00 */
+  --atencao-fundo: 248 237 214;
+  --critico: 179 38 30;        /* #B3261E */
+  --critico-fundo: 250 228 226;
+  --sobre-lente: 250 250 250;
+  color-scheme: light;
+}
+
+:root[data-tema="escuro"] {
+  --fundo: 15 15 15;           /* #0F0F0F */
+  --superficie: 26 26 26;      /* #1A1A1A */
+  --elevada: 35 37 39;
+  --tinta: 237 237 237;
+  --suave: 163 169 174;
+  --linha: 51 55 58;
+  --lente: 127 182 204;        /* #7FB6CC */
+  --lente-forte: 127 182 204;
+  --lente-clara: 25 44 52;
+  --ok: 108 196 154;
+  --ok-fundo: 20 40 31;
+  --atencao: 227 176 92;
+  --atencao-fundo: 48 37 16;
+  --critico: 240 138 128;
+  --critico-fundo: 56 24 22;
+  --sobre-lente: 15 15 15;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-fundo text-tinta font-sans text-base antialiased;
+  font-variant-numeric: tabular-nums;
+}
+h1, h2, h3 { @apply font-bold; line-height: 1.2; letter-spacing: -0.01em; }
+
+:focus-visible { outline: 2px solid rgb(var(--lente)); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.sobre-lente { color: rgb(var(--sobre-lente)); }
