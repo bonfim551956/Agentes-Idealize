@@ -12,5 +12,7 @@ $P -f tests/00_supabase_stub.sql
 for m in supabase/migrations/*.sql; do echo "→ migração $(basename "$m")"; $P -f "$m"; done
 echo "→ testes"
 $P -f tests/10_core_tests.sql
+echo "→ testes financeiros"
+$P -f tests/20_fin_tests.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh

@@ -1,0 +1,482 @@
+→ migração 20261026090000_core_fundacao.sql
+→ migração 20261026113000_core_search_path_triggers.sql
+→ migração 20261026120000_fin_modelo_financeiro.sql
+→ migração 20261026120100_fin_fechamento.sql
+→ migração 20261026124500_fin_indices_caminho_quente.sql
+→ testes
+ politica_definir 
+------------------
+                1
+(1 row)
+
+ politica_definir 
+------------------
+                2
+(1 row)
+
+ politica_definir 
+------------------
+                3
+(1 row)
+
+ politica_definir 
+------------------
+                4
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+    grupo     |                                   teste                                   |  r   |                                detalhe                                 
+--------------+---------------------------------------------------------------------------+------+------------------------------------------------------------------------
+ autorizacao  | automática dentro do limite                                               | PASS | autorizada automaticamente
+ autorizacao  | acima do limite vira aprovação                                            | PASS | exige aprovação
+ autorizacao  | unidade fora do escopo do agente é negada                                 | PASS | nenhuma política autoriza (negação por padrão)
+ autorizacao  | unidade inativa é negada                                                  | PASS | unidade inexistente ou inativa
+ autorizacao  | operação sem política: negação por padrão                                 | PASS | nenhuma política autoriza (negação por padrão)
+ autorizacao  | pagamento é proibido                                                      | PASS | política proíbe a operação
+ autorizacao  | principal inativo é negado                                                | PASS | principal inexistente ou inativo
+ autorizacao  | agente não altera a matriz de permissões                                  | PASS | somente pessoas alteram a matriz de permissões
+ autorizacao  | pessoa sem admin não altera a matriz                                      | PASS | ator sem papel admin global
+ autorizacao  | políticas não podem ser apagadas                                          | PASS | políticas não são apagadas; desative (ativo=false)
+ autorizacao  | redefinir política gera nova versão e desativa a anterior                 | PASS | 
+ tarefas      | mesma chave de idempotência devolve a mesma tarefa                        | PASS | 
+ tarefas      | só uma tarefa criada para a chave                                         | PASS | 
+ tarefas      | tarefa automática nasce pronta                                            | PASS | 
+ tarefas      | operação proibida nasce rejeitada (e fica registrada)                     | PASS | 
+ tarefas      | unidade fora do escopo nasce rejeitada                                    | PASS | 
+ tarefas      | solicitante inativo não cria tarefa                                       | PASS | solicitante inexistente ou inativo
+ tarefas      | chave de idempotência obrigatória                                         | PASS | chave de idempotência obrigatória (mín. 8 caracteres)
+ tarefas      | agente pausado: tarefa bloqueada                                          | PASS | 
+ tarefas      | agente pausado não reivindica nada                                        | PASS | 
+ aprovacoes   | operação de alto risco aguarda aprovação                                  | PASS | 
+ aprovacoes   | solicitante não aprova a própria operação                                 | PASS | quem solicitou não pode aprovar a própria operação
+ aprovacoes   | agente não aprova                                                         | PASS | somente pessoas ativas aprovam
+ aprovacoes   | aprovador fora da alçada é recusado                                       | PASS | aprovador fora da alçada
+ aprovacoes   | aprovação com hash de outra operação é recusada                           | PASS | aprovação não corresponde à operação atual (hash divergente)
+ aprovacoes   | com 1 de 2 aprovações continua aguardando                                 | PASS | aguardando_aprovacao
+ aprovacoes   | admin sem papel de diretoria não conta como aprovador                     | PASS | aprovador fora da alçada
+ aprovacoes   | mesmo aprovador não aprova duas vezes                                     | PASS | duplicate key value violates unique constraint "aprovacoes_tarefa_id_a
+ aprovacoes   | duas pessoas autorizadas liberam a tarefa                                 | PASS | pronta
+ aprovacoes   | aprovação expirada é revalidada antes de executar                         | PASS | 
+ aprovacoes   | rejeição encerra a tarefa                                                 | PASS | rejeitada
+ execucao     | reivindica a tarefa pronta                                                | PASS | 
+ execucao     | segunda reivindicação não pega a mesma tarefa                             | PASS | 
+ execucao     | sucesso vai para validação, não conclui direto                            | PASS | validando
+ validacao    | executor não valida a própria execução                                    | PASS | o executor não pode validar a própria execução
+ validacao    | rejeição sem motivo é recusada                                            | PASS | rejeição exige motivo
+ validacao    | validador independente conclui                                            | PASS | concluida
+ validacao    | validação rejeitada bloqueia para revisão (não conclui)                   | PASS | bloqueada
+ validacao    | registro da validação fica separado da execução                           | PASS | 
+ recuperacao  | lease vencido vira INCERTA (não reexecuta às cegas)                       | PASS | 
+ recuperacao  | incerteza abre incidente alto                                             | PASS | 
+ recuperacao  | execução marcada como lease_expirado                                      | PASS | 
+ recuperacao  | agente não reconcilia tarefa incerta                                      | PASS | reconciliação é humana
+ recuperacao  | reconciliação confirmando não-efetivação libera nova tentativa            | PASS | pronta
+ recuperacao  | tarefa reconciliada volta a ser executada                                 | PASS | 
+ recuperacao  | timeout após escrita externa vira incerta                                 | PASS | incerta
+ retentativa  | erro seguro reagenda com backoff                                          | PASS | 
+ retentativa  | tarefa em backoff não é reivindicada antes da hora                        | PASS | 
+ retentativa  | esgotou tentativas → falhou                                               | PASS | falhou
+ retentativa  | falha repetida abre incidente                                             | PASS | 
+ execucao     | outro executor não registra resultado de tarefa alheia                    | PASS | tarefa não está em execução por este executor (status=concluida)
+ fila         | dependência pendente segura tarefa prioritária; pega a próxima prioridade | PASS | 
+ fila         | depois a tarefa sem dependência                                           | PASS | 
+ fila         | dependência concluída libera a tarefa dependente                          | PASS | 
+ autorizacao  | permissão revogada após a criação bloqueia na hora de executar            | PASS | 
+ contingencia | plataforma pausada bloqueia tarefa nova                                   | PASS | 
+ contingencia | monitoramento autorizado continua com plataforma pausada                  | PASS | 
+ custos       | 80% do limite gera alerta baixo                                           | PASS | 
+ custos       | limite atingido escala a severidade (mesmo incidente, sem duplicar)       | PASS | 
+ custos       | acima do limite: tarefa não crítica bloqueada                             | PASS | 
+ custos       | tarefa crítica (prioridade 1) segue                                       | PASS | 
+ custos       | estimado e confirmado ficam separados                                     | PASS | 
+ incidentes   | repetições agrupadas contam ocorrências                                   | PASS | 
+ incidentes   | nova ocorrência após resolvido abre incidente novo (não é ocultada)       | PASS | 
+ auditoria    | cadeia de hash íntegra                                                    | PASS | 
+ auditoria    | transições de tarefa auditadas                                            | PASS | 
+ auditoria    | alterações na matriz auditadas                                            | PASS | 
+ auditoria    | UPDATE na auditoria é bloqueado                                           | PASS | core.auditoria é append-only (UPDATE bloqueado)
+ auditoria    | DELETE na auditoria é bloqueado                                           | PASS | core.auditoria é append-only (DELETE bloqueado)
+ auditoria    | TRUNCATE na auditoria é bloqueado                                         | PASS | core.auditoria é append-only (TRUNCATE bloqueado)
+ auditoria    | adulteração é detectada pela verificação da cadeia                        | PASS | detectado no id 5
+ auditoria    | após o rollback a cadeia segue íntegra                                    | PASS | 
+ seguranca    | anon não lê core.tarefas                                                  | PASS | permission denied for schema core
+ seguranca    | anon não chama criar_tarefa                                               | PASS | permission denied for schema core
+ seguranca    | authenticated não chama aprovar                                           | PASS | permission denied for schema core
+ seguranca    | RLS ligado e forçado em todas as tabelas do core                          | PASS | 
+ seguranca    | toda função SECURITY DEFINER do core tem search_path fixo                 | PASS | 
+ seguranca    | texto malicioso no payload não altera categoria nem permissões            | PASS | 
+
+ pass | fail 
+------+------
+   78 |    0
+
+→ testes financeiros
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+             grupo             |                                               teste                                               |  r   |                                     detalhe                                      
+-------------------------------+---------------------------------------------------------------------------------------------------+------+----------------------------------------------------------------------------------
+ fin.regras                    | receita com sentido de saída é recusada                                                           | PASS | natureza receita incompatível com sentido saida
+ fin.regras                    | categoria de receita em despesa é recusada                                                        | PASS | categoria vendas_pix não é de despesa
+ fin.regras                    | lançamento não nasce conciliado (só o extrato concilia)                                           | PASS | status inicial inválido (conciliado): conciliação só acontece pelo extrato
+ fin.regras                    | confirmar despesa sem categoria é recusado                                                        | PASS | new row for relation "lancamentos" violates check constraint "lancamentos_check3
+ fin.regras                    | transferência não entra pela porta de receita/despesa                                             | PASS | use fin.registrar_transferência para transferências
+ fin.regras                    | ajuste sem aprovação da diretoria é recusado                                                      | PASS | ajuste exige aprovação de pessoa da diretoria
+ fin.extrato                   | 13 linhas novas importadas (inclui 2 PIX idênticos no mesmo dia)                                  | PASS | {"novas": 13, "duplicadas": 0, "importacao": "1aac8d57-ef8c-4e19-9710-bb2d5ab0f8
+ fin.extrato                   | mesmo arquivo de novo não importa nada                                                            | PASS | {"importacao": "1aac8d57-ef8c-4e19-9710-bb2d5ab0f8df", "ja_importado": true}
+ fin.extrato                   | arquivo sobreposto: linhas já existentes não duplicam                                             | PASS | {"novas": 0, "duplicadas": 3, "importacao": "1f8813ca-b36e-4419-8ca2-1b78e8611dd
+ fin.extrato                   | os 2 PIX idênticos continuam sendo 2 movimentos                                                   | PASS | 
+ fin.extrato                   | saldo do banco fecha com as linhas (sem pendência de saldo)                                       | PASS | 
+ fin.extrato                   | saldo que não fecha abre pendência                                                                | PASS | 
+ fin.extrato                   | dados do extrato são imutáveis                                                                    | PASS | dados do extrato são imutáveis
+ fin.extrato                   | movimento bancário não é apagado                                                                  | PASS | movimentos bancários não são apagados
+ fin.duplicidade               | mesmo ID bancário enviado 2× abre duplicidade suspeita                                            | PASS | 
+ fin.conciliacao               | concilia pelo ID bancário                                                                         | PASS | {"por_id": 1, "ambiguos": 2, "por_valor_data": 0}
+ fin.conciliacao               | regra registrada = id_bancario                                                                    | PASS | 
+ fin.divergencia               | valor divergente NÃO concilia e fica contestado                                                   | PASS | 
+ fin.divergencia               | valor original preservado (sem forçar)                                                            | PASS | 
+ fin.divergencia               | divergência vira pendência material                                                               | PASS | 
+ fin.conciliacao               | 1 comprovante para 2 PIX idênticos: ambiguidade, sem chute                                        | PASS | 
+ fin.datas                     | data fora da janela não concilia automaticamente                                                  | PASS | 
+ fin.conciliacao               | conciliação manual com valor diferente é recusada                                                 | PASS | lançamentos somam 210.00 e o movimento vale 200.00: não se força conciliação
+ fin.conciliacao               | agente não faz conciliação manual                                                                 | PASS | conciliação manual é humana
+ fin.transferencia             | contas da mesma unidade = transferência interna com par                                           | PASS | 
+ fin.cartao                    | compras no cartão penduradas na mesma fatura, total 430                                           | PASS | 
+ fin.cartao                    | pagamento igual ao total marca fatura paga                                                        | PASS | 
+ fin.reembolso                 | reembolso fica ligado à despesa original                                                          | PASS | 
+ fin.reembolso                 | reembolso acima da despesa original é recusado                                                    | PASS | reembolsos (76.00) excedem a despesa original (75.00)
+ fin.conciliacao               | TED da transferência, fatura e reembolso conciliados por valor+data único                         | PASS | {"por_id": 0, "ambiguos": 2, "por_valor_data": 3}
+ fin.extrato                   | linhas com regra viram lançamentos classificados (Stone, tarifa, Anthropic)                       | PASS | {"classificados": 3, "sem_classificacao": 1}
+ fin.datas                     | movimento de mesmo valor que comprovante fora da janela NÃO vira lançamento novo (evita duplicar) | PASS | 
+ fin.transferencia             | PIX para outra unidade vira transferência entre unidades + pendência do par                       | PASS | 
+ fin.pagamento_sem_comprovante | despesa paga sem comprovante (PIX sem regra) fica sem categoria + pendência                       | PASS | 
+ fin.rateio                    | rateio que não fecha com o valor é recusado                                                       | PASS | rateio desbalanceado: itens somam 100, lançamento vale 99.00
+ fin.rateio                    | rateio redistribui a DRE entre as unidades                                                        | PASS | 
+ fin.rateio                    | rateio não mexe no caixa (dinheiro saiu só de SV)                                                 | PASS | 
+ fin.cancelamento              | lançamento conciliado não pode ser cancelado                                                      | PASS | lançamento conciliado com o extrato não pode ser cancelado; registre estorno/aju
+ fin.cancelamento              | lançamento não é apagado                                                                          | PASS | lançamentos não são apagados; cancele com motivo
+ fin.cancelamento              | cancelar sem motivo é recusado                                                                    | PASS | cancelamento exige motivo
+ fin.cartao                    | DRE conta as compras do cartão uma vez (300 + 130)                                                | PASS | 
+ fin.cartao                    | DRE não conta o pagamento da fatura                                                               | PASS | 
+ fin.cartao                    | caixa conta só o pagamento da fatura (430), não as compras                                        | PASS | 
+ fin.reembolso                 | DRE vê a despesa original (75) uma vez; caixa vê o reembolso (75)                                 | PASS | 
+ fin.transferencia             | transferência interna fora da DRE e do caixa da unidade                                           | PASS | 
+ fin.transferencia             | transferência entre unidades aparece no caixa da unidade e some no consolidado                    | PASS | 
+ fin.comprovante               | comprovante sem pagamento confirmado não entra no caixa nem na DRE                                | PASS | 
+ fin.divergencia               | lançamento contestado fora dos valores confirmados                                                | PASS | 
+ fin.previsto                  | previsão aparece no previsto e não no realizado                                                   | PASS | 
+ fin.fechamento                | com pendências materiais o fechamento nasce BLOQUEADO                                             | PASS | 10
+ fin.fechamento                | comprovante sem pagamento listado no pacote                                                       | PASS | 
+ fin.fechamento                | quem preparou não valida                                                                          | PASS | quem preparou não valida
+ fin.fechamento                | fechamento bloqueado não pode ser aprovado                                                        | PASS | só fechamento validado e sem pendências materiais pode ser aprovado (status=bloq
+ fin.transferencia             | extrato da conta destino concilia a perna de entrada da transferência interna                     | PASS | 
+ fin.fechamento                | após resolver, o fechamento é preparado sem pendências materiais                                  | PASS | 0
+ fin.fechamento                | versão anterior marcada como reaberta (histórico preservado)                                      | PASS | 
+ fin.validacao                 | validador recalcula pelo extrato e confere com o pacote                                           | PASS | {"ok": true, "erros": [], "pendencias_materiais": 0}
+ fin.validacao                 | caixa do pacote = movimentos do extrato (exceto transferência interna)                            | PASS | 
+ fin.fechamento                | gerente (não diretoria) não aprova fechamento                                                     | PASS | somente a diretoria decide o fechamento
+ fin.fechamento                | agente não aprova fechamento                                                                      | PASS | somente a diretoria decide o fechamento
+ fin.fechamento                | aprovação presa ao pacote visto (hash diferente é recusado)                                       | PASS | o pacote mudou desde que foi visto; reabra e revise
+ fin.fechamento                | diretoria aprova fechamento validado                                                              | PASS | aprovado
+ fin.fechamento                | competência aprovada fica travada para novos lançamentos                                          | PASS | competência 10/2026 da unidade u_sv está fechada
+ fin.fechamento                | não se prepara de novo competência aprovada                                                       | PASS | competência já aprovada; reabertura exige decisão da diretoria
+ fin.fechamento                | novembro continua aberto                                                                          | PASS | 
+ fin.validacao                 | pacote adulterado é detectado e o fechamento fica bloqueado                                       | PASS | {"ok": false, "erros": [{"regra": "saldo_extrato", "importacao": "4967608c-f344-
+ fin.auditoria                 | lançamentos, conciliações manuais e fechamento auditados                                          | PASS | 
+ fin.auditoria                 | cadeia de auditoria íntegra após tudo                                                             | PASS | 
+ fin.seguranca                 | anon não lê fin.lancamentos                                                                       | PASS | permission denied for schema fin
+ fin.seguranca                 | RLS forçado em todas as tabelas do fin                                                            | PASS | 
+ fin.seguranca                 | toda função SECURITY DEFINER do fin tem search_path fixo                                          | PASS | 
+
+ pass | fail 
+------+------
+   71 |    0
+
+→ concorrência (4 workers × 200 tarefas)
+NOTICE:  worker w3 processou 44
+NOTICE:  worker w1 processou 43
+NOTICE:  worker w4 processou 44
+NOTICE:  worker w2 processou 69
+tarefas=200 validando=200 execucoes=200 duplicadas=0 workers_usados=4
+cadeia_auditoria=integra eventos=760
