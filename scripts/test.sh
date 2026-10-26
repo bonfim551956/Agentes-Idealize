@@ -18,5 +18,9 @@ echo "→ testes de conciliação por documento"
 $P -f tests/30_fin_conciliacao_documento.sql
 echo "→ testes das decisões da homologação"
 $P -f tests/40_fin_decisoes.sql
+echo "→ testes do canal WhatsApp"
+$P -f tests/50_fin_whatsapp.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
+echo "→ funções (Deno): unidade + ponta a ponta"
+tests/e2e/run.sh

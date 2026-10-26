@@ -1,7 +1,7 @@
 # STATUS — Idealize AI
 
-**Fase atual:** F — decisões do Diego aplicadas (v0.3.0); outubro de SV reprocessado e validado; falta só a fatura do cartão (R$ 4.165,55)
-**Último estado validado:** 26/10/2026 ~14:40 — `fin` v0.3.0 · local 78 + 71 + 8 + 27 + concorrência · Supabase: validador independente sem falhas, saldo de abertura conferido
+**Fase atual:** G — canal WhatsApp do agente financeiro instalado e **DESLIGADO** (v0.4.0); aguardando decisão do Diego para ligar em modo sombra
+**Último estado validado:** 26/10/2026 — `fin` v0.4.0 · local 221 testes SQL (78 + 71 + 8 + 27 + 37) + concorrência + 11 Deno, 0 falhas · Supabase: travas do canal conferidas
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
 
@@ -26,6 +26,8 @@
 - [x] v0.3.0 — decisões do Diego: estorno (líquido zero na DRE), pagamento de fatura de cartão com pendência até as
       compras, VT no fim do mês por regra com condição de data, reclassificação/regra/saldo só por pessoa e auditados
       (`20261026150000`, 27 testes)
+- [x] G (instalado, desligado) — canal WhatsApp: `20261026160000` + edge functions `fin-whatsapp-webhook` e `fin-worker`
+      (37 testes SQL + 11 Deno, incluindo ponta a ponta com Postgres real) — `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
@@ -60,9 +62,9 @@
 - Perna de transferência sem extrato era rotulada como "comprovante sem pagamento".
 
 ## Próxima ação
-Aplicar as decisões do Diego (regras e reclassificações, com auditoria) e reprocessar outubro de SV.
-Depois: G — ligar o robô do WhatsApp ao `fin` em paralelo ao Finance AI (adaptador Z-API, só leitura do grupo),
-painel de pendências e liberação gradual por unidade.
+Ligar a Etapa G só com "PODE FAZER" do Diego, nesta ordem (checklist em `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`):
+segredos → apontar o webhook → agendar o worker → ativar agente → `fin.whatsapp.ativo=true` (com `responder=false`,
+modo sombra, em paralelo ao Finance AI). Depois: painel de pendências e liberação gradual por unidade.
 
 ## Riscos
 Ver `docs/DIAGNOSTICO.md` §4.
