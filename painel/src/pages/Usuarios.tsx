@@ -7,12 +7,15 @@ import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao
 import { Confirmar } from "../ui/Confirmar";
 
 type Pessoa = U["principais"][number];
+// admin e diretoria só mudam por migração revisada (separação de funções)
+const PRIVILEGIADOS = ["admin", "diretoria"];
+const privilegiada = (p: Pessoa) => p.papeis.some((x) => PRIVILEGIADOS.includes(x.papel));
 
 function ConcederPapel({ pessoa, u, aoConcluir }: { pessoa: Pessoa; u: U; aoConcluir: () => void }) {
   const [papel, setPapel] = useState("consulta");
   const [unidade, setUnidade] = useState("");
   const [validade, setValidade] = useState("");
-  const papeis = u.papeis.filter((p) => !p.id.startsWith("agente_"));
+  const papeis = u.papeis.filter((p) => !p.id.startsWith("agente_") && !PRIVILEGIADOS.includes(p.id));
   return (
     <Confirmar
       gatilho={<Botao tamanho="sm" icone={<Plus className="h-4 w-4" aria-hidden />}>Dar papel</Botao>}
@@ -48,52 +51,12 @@ function VincularLogin({ pessoa, aoConcluir }: { pessoa: Pessoa; aoConcluir: () 
   const [email, setEmail] = useState("");
   return (
     <Confirmar
-      gatilho={<Botao tamanho="sm" icone={<Link2 className="h-4 w-4" aria-hidden />}>{pessoa.vinculado ? "Trocar login" : "Vincular login"}</Botao>}
+      gatilho={<Botao tamanho="sm" icone={<Link2 className="h-4 w-4" aria-hidden />}>Vincular login</Botao>}
       titulo={`Vincular login a ${pessoa.nome}`} rotuloConfirmar="Vincular"
-      descricao="Crie antes o usuário (e-mail e senha) em Supabase, Authentication. A pessoa vai cadastrar o autenticador no primeiro acesso."
+      descricao="Antes: crie o usuário (e-mail e senha, confirmado) em Supabase, Authentication, e peça para a pessoa entrar uma vez no painel e ativar o autenticador. Só então vincule. Depois de vinculado, o login não é trocado por aqui."
       detalhes={<Campo id="vl-email" rotulo="E-mail do login"><input id="vl-email" type="email" className={entradaCls} value={email} onChange={(e) => setEmail(e.target.value)} /></Campo>}
       motivo={{ rotulo: "Motivo", minimo: 5 }}
       aoConfirmar={(m) => rpc("painel_usuario_vincular", { p_principal: pessoa.id, p_email: email, p_motivo: m })}
-      aoConcluir={aoConcluir} />
-  );
-}
-
-const RECURSO_LIVRE = "";
-function NovaPolitica({ u, aoConcluir }: { u: U; aoConcluir: () => void }) {
-  const [f, setF] = useState({ papel: "financeiro", recurso: RECURSO_LIVRE, operacao: "", categoria: "aprovacao", risco: "medio",
-    unidade: "", limite: "", aprovadores: "1", papel_aprovador: "diretoria" });
-  const m = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
-  return (
-    <Confirmar
-      gatilho={<Botao icone={<Plus className="h-4 w-4" aria-hidden />}>Nova versão de política</Botao>}
-      titulo="Definir política" rotuloConfirmar="Salvar política"
-      descricao="Se já existir política para o mesmo papel, operação e unidade, ela é encerrada e esta vira a nova versão. Nada é apagado."
-      detalhes={
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Campo id="po-papel" rotulo="Papel"><select id="po-papel" className={entradaCls} value={f.papel} onChange={m("papel")}>
-            {u.papeis.map((p) => <option key={p.id} value={p.id}>{PAPEL[p.id] ?? p.nome}</option>)}</select></Campo>
-          <Campo id="po-cat" rotulo="Decisão"><select id="po-cat" className={entradaCls} value={f.categoria} onChange={m("categoria")}>
-            <option value="automatica">Automática</option><option value="aprovacao">Exige aprovação</option><option value="proibida">Proibida</option></select></Campo>
-          <Campo id="po-rec" rotulo="Recurso" ajuda="Ex.: fin.lancamento"><input id="po-rec" className={entradaCls} value={f.recurso} onChange={m("recurso")} /></Campo>
-          <Campo id="po-op" rotulo="Operação" ajuda="Ex.: registrar_comprovante"><input id="po-op" className={entradaCls} value={f.operacao} onChange={m("operacao")} /></Campo>
-          <Campo id="po-risco" rotulo="Risco"><select id="po-risco" className={entradaCls} value={f.risco} onChange={m("risco")}>
-            {["baixo", "medio", "alto", "critico"].map((r) => <option key={r}>{r}</option>)}</select></Campo>
-          <Campo id="po-un" rotulo="Onde vale"><select id="po-un" className={entradaCls} value={f.unidade} onChange={m("unidade")}>
-            <option value="">Todas as unidades</option>{u.unidades.map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}</select></Campo>
-          <Campo id="po-lim" rotulo="Automática até (R$)" ajuda="Opcional. Acima disso exige aprovação."><input id="po-lim" inputMode="decimal" className={entradaCls} value={f.limite} onChange={m("limite")} /></Campo>
-          {f.categoria === "aprovacao" && (<>
-            <Campo id="po-apr" rotulo="Quem aprova"><select id="po-apr" className={entradaCls} value={f.papel_aprovador} onChange={m("papel_aprovador")}>
-              {u.papeis.filter((p) => !p.id.startsWith("agente_")).map((p) => <option key={p.id} value={p.id}>{PAPEL[p.id] ?? p.nome}</option>)}</select></Campo>
-            <Campo id="po-n" rotulo="Aprovações necessárias"><select id="po-n" className={entradaCls} value={f.aprovadores} onChange={m("aprovadores")}>
-              {["1", "2", "3"].map((n) => <option key={n}>{n}</option>)}</select></Campo>
-          </>)}
-        </div>
-      }
-      motivo={{ rotulo: "Motivo da mudança", minimo: 5 }}
-      aoConfirmar={(mot) => rpc("painel_politica_definir", {
-        p_papel: f.papel, p_recurso: f.recurso.trim(), p_operacao: f.operacao.trim(), p_categoria: f.categoria, p_risco: f.risco,
-        p_unidade: f.unidade || null, p_limite: f.limite ? Number(f.limite.replace(/\./g, "").replace(",", ".")) : null,
-        p_aprovadores: Number(f.aprovadores), p_papel_aprovador: f.categoria === "aprovacao" ? f.papel_aprovador : null, p_motivo: mot })}
       aoConcluir={aoConcluir} />
   );
 }
@@ -129,7 +92,7 @@ export function Usuarios() {
                     {p.papeis.length ? p.papeis.map((pp) => (
                       <li key={`${pp.papel}-${pp.unidade}`} className="inline-flex items-center gap-1 rounded-pequeno bg-lente-clara py-1 pl-2 pr-1 text-xs font-bold text-lente">
                         {PAPEL[pp.papel] ?? pp.papel}, {unidadeNome(pp.unidade)}{pp.valido_ate && `, até ${data(pp.valido_ate)}`}
-                        {!p.eu && (
+                        {!p.eu && !privilegiada(p) && (
                           <Confirmar
                             gatilho={<button className="rounded-pequeno p-1 hover:bg-lente/20" aria-label={`Revogar ${PAPEL[pp.papel] ?? pp.papel} de ${p.nome}`}><X className="h-3 w-3" /></button>}
                             titulo="Revogar papel?" rotuloConfirmar="Revogar" variante="perigo"
@@ -142,10 +105,13 @@ export function Usuarios() {
                     )) : <li className="text-sm text-suave">Nenhum papel: não vê nada no painel.</li>}
                   </ul>
                 </div>
-                {!p.eu && (
+                {!p.eu && privilegiada(p) && (
+                  <p className="max-w-xs text-sm text-suave">Administração e diretoria só mudam por mudança revisada no banco.</p>
+                )}
+                {!p.eu && !privilegiada(p) && (
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <ConcederPapel pessoa={p} u={u} aoConcluir={concluir} />
-                    <VincularLogin pessoa={p} aoConcluir={concluir} />
+                    {!p.vinculado && <VincularLogin pessoa={p} aoConcluir={concluir} />}
                     <Confirmar
                       gatilho={<Botao tamanho="sm" variante={p.ativo ? "fantasma" : "primario"} icone={p.ativo ? <UserX className="h-4 w-4" aria-hidden /> : <UserCheck className="h-4 w-4" aria-hidden />}>{p.ativo ? "Suspender acesso" : "Reativar acesso"}</Botao>}
                       titulo={p.ativo ? `Suspender ${p.nome}?` : `Reativar ${p.nome}?`} rotuloConfirmar={p.ativo ? "Suspender" : "Reativar"} variante={p.ativo ? "perigo" : "primario"}
@@ -161,8 +127,8 @@ export function Usuarios() {
         <p className="mt-4 text-sm text-suave">Agentes ({agentes.map((a) => a.nome).join(", ")}) têm papéis próprios de máquina e não são gerenciados aqui.</p>
       </Secao>
 
-      <Secao titulo="Políticas vigentes" descricao="A matriz que decide o que é automático, o que exige aprovação e o que é proibido. Sem política, a resposta é não."
-        acoes={<NovaPolitica u={u} aoConcluir={concluir} />}>
+      <Secao titulo="Políticas vigentes" descricao="A matriz que decide o que é automático, o que exige aprovação e o que é proibido. Sem política, a resposta é não. Mudanças na matriz são feitas por mudança revisada no banco, nunca por aqui."
+>
         <Tabela rotulo="Políticas vigentes">
           <thead><tr><th className={th}>Papel</th><th className={th}>Operação</th><th className={th}>Onde</th><th className={th}>Decisão</th><th className={th}>Risco</th><th className={th}>Desde</th></tr></thead>
           <tbody>{u.politicas.map((p) => (

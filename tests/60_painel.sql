@@ -18,7 +18,12 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000a001','admin@teste'), ('00000000-0000-0000-0000-00000000a002','gerente.b@teste'),
   ('00000000-0000-0000-0000-00000000a003','fin.a@teste'),  ('00000000-0000-0000-0000-00000000a004','diretor2@teste'),
   ('00000000-0000-0000-0000-00000000a005','semPapel@teste'), ('00000000-0000-0000-0000-00000000a006','inativo@teste'),
-  ('00000000-0000-0000-0000-00000000a007','novo@teste'),    ('00000000-0000-0000-0000-00000000a008','solto@teste');
+  ('00000000-0000-0000-0000-00000000a007','novo@teste'),    ('00000000-0000-0000-0000-00000000a008','solto@teste'),
+  ('00000000-0000-0000-0000-00000000a009','semfator@teste'), ('00000000-0000-0000-0000-00000000a010','naoconfirmado@teste');
+update auth.users set email_confirmed_at = now() where email <> 'naoconfirmado@teste';
+insert into auth.mfa_factors (user_id, factor_type, status) values
+  ('00000000-0000-0000-0000-00000000a007','totp','verified'), ('00000000-0000-0000-0000-00000000a010','totp','verified'),
+  ('00000000-0000-0000-0000-00000000a009','totp','unverified');
 insert into core.principais (id, tipo, nome, telefone, auth_uid) values
   ('00000000-0000-0000-0000-0000000060a1','usuario','Admin Painel','5513999996001','00000000-0000-0000-0000-00000000a001'),
   ('00000000-0000-0000-0000-0000000060a2','usuario','Gerente B',  '5513999996002','00000000-0000-0000-0000-00000000a002'),
@@ -56,10 +61,15 @@ insert into core.tarefas (id, chave_idempotencia, agente_id, tipo, recurso, oper
 
 insert into fin.pendencias (id, tipo, unidade_id, detalhe, referencia, material) values
   (960001,'sem_classificacao','p_a','{"descricao":"PIX ENVIADO 12345678909 FULANO"}','painel-1', true),
-  (960002,'divergencia','p_b','{"obs":"diferença de centavos"}','painel-2', false);
+  (960002,'divergencia','p_b','{"obs":"diferença de centavos"}','painel-2', false),
+  (960003,'divergencia','p_a','{"obs":"diferença de 2 centavos"}','painel-3', false);
+insert into fin.fechamentos (id, unidade_id, competencia, status, pacote, pacote_hash, pendencias_materiais, preparado_por)
+  values ('00000000-0000-0000-0000-0000000060e1','p_a','2026-09-01','aprovado','{}','pacote-teste', 0, 'teste');
 select core.abrir_incidente('painel:inc1','media','Falha de teste no painel','ag_painel', null, '00000000-0000-0000-0000-0000000060f2');
 -- valores calculados como superusuário (o papel authenticated não lê o core)
-select core.hash_operacao('teste.painel','pagar','p_a',150,'{"cpf":"123.456.789-09","telefone":"5513999990001","nota":"pagar fornecedor"}') as h1,
+select painel._codigo(core.hash_operacao('teste.painel','pagar','p_a',150,'{"cpf":"123.456.789-09","telefone":"5513999990001","nota":"pagar fornecedor"}')) as h1,
+       core.hash_operacao('teste.painel','pagar','p_a',150,'{"cpf":"123.456.789-09","telefone":"5513999990001","nota":"pagar fornecedor"}') as hraw,
+       painel._codigo('pacote-teste') as hf,
        (select id from core.principais where agente_id = 'financeiro') as ag_principal,
        (select id from core.incidentes where chave_agrupamento = 'painel:inc1') as inc1 \gset
 
@@ -79,7 +89,8 @@ select t.erro('acesso','login sem vínculo com pessoa → sem acesso', 'select p
 select t.jwt('00000000-0000-0000-0000-00000000a006');
 select t.erro('acesso','pessoa inativa → sem acesso', 'select public.painel_eu()', 'sem acesso');
 select t.jwt('00000000-0000-0000-0000-00000000a001', 'aal1');
-select t.ok('acesso','painel_eu funciona sem 2FA e avisa que falta', (public.painel_eu()->>'aal2')::boolean = false);
+select t.ok('acesso','painel_eu funciona sem 2FA, avisa que falta e não revela papéis',
+  (public.painel_eu()->>'aal2')::boolean = false and not (public.painel_eu() ? 'papeis') and not (public.painel_eu() ? 'unidades'));
 select t.erro('acesso','sem 2FA (aal1) não lê dados', 'select public.painel_resumo()', '2FA');
 select t.erro('acesso','sem 2FA não aprova', $q$select public.painel_aprovar('00000000-0000-0000-0000-0000000060f1','aprovar','x')$q$, '2FA');
 select t.jwt('00000000-0000-0000-0000-00000000a001');
@@ -108,6 +119,8 @@ select t.ok('escopo','gerente B: financeiro só com a unidade B e sem consolidad
   (select count(*) = 1 from jsonb_array_elements(public.painel_financeiro()->'unidades') x) and public.painel_financeiro()->'consolidado' = 'null'::jsonb);
 select t.erro('escopo','gerente B não lê DRE da unidade A', $q$select public.painel_dre('p_a')$q$, 'sem permissão');
 select t.ok('escopo','gerente B lê DRE da própria unidade', jsonb_typeof(public.painel_dre('p_b')) = 'array');
+select t.ok('escopo','gerente B não vê integrações nem versões',
+  (select o->'integracoes' = '[]'::jsonb and o->'versoes' = 'null'::jsonb from (select public.painel_operacao() o) z));
 select t.erro('escopo','gerente B não lê auditoria', 'select public.painel_auditoria()', 'sem permissão');
 select t.erro('escopo','gerente B não administra usuários', 'select public.painel_usuarios()', 'sem permissão');
 select t.ok('escopo','gerente B não vê aprovações da unidade A', jsonb_array_length(public.painel_aprovacoes()) = 0);
@@ -125,7 +138,7 @@ select t.ok('mascara','CPF e telefone do payload mascarados no detalhe',
           and position('-09' in p::text) > 0 and position('0001' in p::text) > 0
    from (select public.painel_tarefa('00000000-0000-0000-0000-0000000060f1')->'tarefa'->'payload' p) z));
 select t.ok('mascara','CPF dentro do texto da pendência mascarado',
-  (select position('12345678909' in x::text) = 0 and position('8909' in x::text) > 0
+  (select position('12345678909' in x::text) = 0 and position('***.***.***-09' in x::text) > 0
    from jsonb_array_elements(public.painel_pendencias('p_a')) x where (x->>'id')::bigint = 960001));
 select t.ok('mascara','telefone na lista de usuários só com 4 dígitos',
   (select bool_and(x->>'telefone' like '••••%' and length(x->>'telefone') = 8)
@@ -145,8 +158,13 @@ select t.jwt('00000000-0000-0000-0000-00000000a001');
 select t.ok('aprovacao','admin/diretoria vê a aprovação e pode aprovar',
   (select (x->>'pode_aprovar')::boolean from jsonb_array_elements(public.painel_aprovacoes()) x
    where x->>'id' = '00000000-0000-0000-0000-0000000060f1'));
+select t.ok('aprovacao','painel mostra código derivado, não o hash da operação',
+  (select x->>'hash_operacao' <> :'hraw' and length(x->>'hash_operacao') = 64 from jsonb_array_elements(public.painel_aprovacoes()) x
+   where x->>'id' = '00000000-0000-0000-0000-0000000060f1'));
+select t.erro('aprovacao','hash cru da operação não serve para aprovar',
+  format('select public.painel_aprovar(%L,%L,%L)', '00000000-0000-0000-0000-0000000060f1','aprovar', :'hraw'), 'divergente');
 select t.erro('aprovacao','hash diferente do que foi visto é recusado',
-  $q$select public.painel_aprovar('00000000-0000-0000-0000-0000000060f1','aprovar','hash-velho')$q$, 'hash');
+  $q$select public.painel_aprovar('00000000-0000-0000-0000-0000000060f1','aprovar','hash-velho')$q$, 'divergente');
 select t.erro('aprovacao','rejeição sem motivo é recusada',
   $q$select public.painel_aprovar('00000000-0000-0000-0000-0000000060f1','rejeitar','x','')$q$, 'motivo');
 select t.erro('aprovacao','decisão inválida é recusada',
@@ -171,15 +189,19 @@ select t.erro('pendencia','gerente (sem política) não trata pendência', $q$se
 select t.jwt('00000000-0000-0000-0000-00000000a003');
 select t.erro('pendencia','financeiro não trata pendência de outra unidade', $q$select public.painel_pendencia_tratar(960002,'resolver','corrigido no banco')$q$, 'sem permissão');
 select t.erro('pendencia','financeiro não aceita pendência material', $q$select public.painel_pendencia_tratar(960001,'aceitar','aceito sem corrigir')$q$, 'sem permissão');
-select t.erro('pendencia','resolução exige descrição', $q$select public.painel_pendencia_tratar(960001,'resolver','ok')$q$, 'mínimo');
-select public.painel_pendencia_tratar(960001,'resolver','classificado manualmente como laboratório');
+select t.erro('pendencia','financeiro não marca como resolvida pendência que bloqueia o fechamento', $q$select public.painel_pendencia_tratar(960001,'resolver','classificado manualmente')$q$, 'sem permissão');
+select t.erro('pendencia','resolução exige descrição', $q$select public.painel_pendencia_tratar(960003,'resolver','ok')$q$, 'mínimo');
+select public.painel_pendencia_tratar(960003,'resolver','diferença de arredondamento corrigida no lançamento');
 reset role;
-select t.ok('pendencia','financeiro resolve na própria unidade, com autor e auditoria',
-  exists (select 1 from fin.pendencias where id = 960001 and status = 'resolvida' and resolvido_por = '00000000-0000-0000-0000-0000000060a3')
-  and exists (select 1 from core.auditoria where acao = 'pendencia_resolvida' and entidade_id = '960001'
+select t.ok('pendencia','financeiro resolve pendência não material na própria unidade, com autor e auditoria',
+  exists (select 1 from fin.pendencias where id = 960003 and status = 'resolvida' and resolvido_por = '00000000-0000-0000-0000-0000000060a3')
+  and exists (select 1 from core.auditoria where acao = 'pendencia_resolvida' and entidade_id = '960003'
               and ator_id = '00000000-0000-0000-0000-0000000060a3'));
 set role authenticated;
-select t.erro('pendencia','pendência já resolvida não é tratada de novo', $q$select public.painel_pendencia_tratar(960001,'resolver','de novo, por engano')$q$, 'não está aberta');
+select t.erro('pendencia','pendência já resolvida não é tratada de novo', $q$select public.painel_pendencia_tratar(960003,'resolver','de novo, por engano')$q$, 'não está aberta');
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select public.painel_pendencia_tratar(960001,'resolver','classificado manualmente como laboratório');
+select t.ok('pendencia','diretoria/admin encerra pendência material', true);
 
 -- ---------------------------------------------------------------------------
 -- F. Usuários e papéis
@@ -191,6 +213,12 @@ select t.erro('usuarios','papel de agente não vai para pessoa',
   $q$select public.painel_papel_conceder('00000000-0000-0000-0000-0000000060a5','agente_financeiro',null,null,'teste de papel')$q$, 'inválido');
 select t.erro('usuarios','agente não é gerenciado pelo painel',
   format('select public.painel_papel_conceder(%L,%L,null,null,%L)', :'ag_principal', 'consulta', 'teste agente'), 'agentes não');
+select t.erro('usuarios','diretoria não é dada pelo painel',
+  $q$select public.painel_papel_conceder('00000000-0000-0000-0000-0000000060a5','diretoria',null,null,'tentativa de escalada')$q$, 'mudança revisada');
+select t.erro('usuarios','admin não é dado pelo painel',
+  $q$select public.painel_papel_conceder('00000000-0000-0000-0000-0000000060a5','admin',null,null,'tentativa de escalada')$q$, 'mudança revisada');
+select t.erro('usuarios','outra pessoa da diretoria não é suspensa pelo painel',
+  $q$select public.painel_usuario_ativo('00000000-0000-0000-0000-0000000060a4', false, 'tentativa de travar')$q$, 'mudança revisada');
 select t.erro('usuarios','concessão exige motivo',
   $q$select public.painel_papel_conceder('00000000-0000-0000-0000-0000000060a5','consulta',null,null,'')$q$, 'mínimo');
 select public.painel_papel_conceder('00000000-0000-0000-0000-0000000060a5','consulta',null,null,'acesso de leitura para teste');
@@ -207,12 +235,12 @@ select t.erro('usuarios','pessoa desativada perde o acesso na próxima chamada',
 select t.jwt('00000000-0000-0000-0000-00000000a001');
 select public.painel_usuario_ativo('00000000-0000-0000-0000-0000000060a2', true, 'fim do teste de revogação');
 select t.erro('usuarios','vincular e-mail inexistente falha', $q$select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a7','ninguem@teste','vínculo de teste')$q$, 'nenhum login');
+select t.erro('usuarios','login sem autenticador ativo não é vinculado', $q$select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a7','semfator@teste','vínculo de teste')$q$, 'autenticador');
+select t.erro('usuarios','login com e-mail não confirmado não é vinculado', $q$select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a7','naoconfirmado@teste','vínculo de teste')$q$, 'confirmado');
 select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a7','NOVO@teste','vínculo de teste');
+select t.erro('usuarios','pessoa já vinculada não troca de login pelo painel', $q$select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a7','semfator@teste','troca de login')$q$, 'já tem login');
 select t.erro('usuarios','mesmo login não vincula duas pessoas', $q$select public.painel_usuario_vincular('00000000-0000-0000-0000-0000000060a8','novo@teste','vínculo duplicado')$q$, 'outra pessoa');
-select t.erro('usuarios','políticas do admin no painel não mudam pelo painel',
-  $q$select public.painel_politica_definir('admin','painel','administrar','proibida','critico',null,null,1,null,'tentativa de travar')$q$, 'migração');
-select t.ok('usuarios','admin define política de outro recurso pelo painel (versionada)',
-  public.painel_politica_definir('consulta','teste.painel','ler','automatica','baixo',null,null,1,null,'leitura de teste') > 0);
+select t.ok('usuarios','matriz de permissões não é editável pelo painel', to_regproc('public.painel_politica_definir') is null);
 reset role;
 select t.ok('usuarios','concessões/revogações/vínculo auditados com o ator',
   (select count(distinct acao) = 5 from core.auditoria where ator_id = '00000000-0000-0000-0000-0000000060a1'
@@ -279,12 +307,33 @@ select t.ok('tratamento','incidente, reconciliação e cancelamento auditados',
   and exists (select 1 from core.auditoria where acao = 'tarefa_cancelada' and entidade_id = '00000000-0000-0000-0000-0000000060f2'
               and ator_id = '00000000-0000-0000-0000-0000000060a1'));
 
+select t.erro('fechamento','código do pacote diferente é recusado',
+  $q$select public.painel_fechamento_decidir('00000000-0000-0000-0000-0000000060e1', false, 'outro', 'motivo de teste')$q$, 'pacote mudou');
+select t.erro('fechamento','fechamento aprovado não volta para rejeitado (não destrava o mês)',
+  format('select public.painel_fechamento_decidir(%L, false, %L, %L)', '00000000-0000-0000-0000-0000000060e1', :'hf', 'tentar reabrir'), 'não pode ser rejeitado');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- J. Mascaramento: formatos
+-- ---------------------------------------------------------------------------
+select t.ok('mascara','telefone com parênteses e hífen', painel._mascarar_texto('ligar (13) 99123-4567 hoje') = 'ligar (**) *****-4567 hoje');
+select t.ok('mascara','telefone com +55 e espaços', position('99123' in painel._mascarar_texto('+55 13 99123 4567')) = 0);
+select t.ok('mascara','CPF com espaços', painel._mascarar_texto('cpf 123 456 789 09') = 'cpf ***.***.***-09');
+select t.ok('mascara','CPF só com hífen', painel._mascarar_texto('123456789-01') = '***.***.***-01');
+select t.ok('mascara','hash de 64 hex vira código protegido', painel._mascarar_texto(repeat('ab12', 16)) = '[código protegido]');
+select t.ok('mascara','CPF gravado como número JSON', painel._mascarar('{"cpf": 12345678909}'::jsonb)->>'cpf' = '***.***.***-09');
+select t.ok('mascara','datas, valores e UUIDs não são alterados',
+  painel._mascarar_texto('2026-10-20 R$ 4.165,55 00000000-0000-0000-0000-0000000060f1') = '2026-10-20 R$ 4.165,55 00000000-0000-0000-0000-0000000060f1');
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+
 -- ---------------------------------------------------------------------------
 -- I. Auditoria, registro de acessos e limite de requisições
 -- ---------------------------------------------------------------------------
 set role authenticated;
 select t.jwt('00000000-0000-0000-0000-00000000a001');
 select t.ok('auditoria','admin verifica a cadeia pelo painel', (public.painel_auditoria_verificar()->>'integra')::boolean);
+select t.ok('auditoria','resumo mostra a última verificação sem recalcular', (public.painel_resumo()->'auditoria'->>'integra')::boolean);
 select t.ok('auditoria','listagem da auditoria mascarada e paginada', jsonb_array_length(public.painel_auditoria(null,null,5)) = 5);
 reset role;
 select t.ok('acessos','consultas sensíveis ficam registradas',

@@ -49,7 +49,7 @@ export const RPC: Record<string, unknown> = {
     plataforma_pausada: false, agentes: { pausado: 1 }, tarefas: { concluida: 41, aguardando_aprovacao: 1, incerta: 1 },
     tarefas_24h: 6, atrasadas: 0, aprovacoes_pendentes: 1, incidentes: { alta: 1, baixa: 1 }, falhas_recorrentes: 0,
     pendencias_fin: { abertas: 3, materiais: 2 }, custo_mes: { confirmado: 0, estimado: 1.84 },
-    integracoes: { ok: 2, nao_verificada: 8 }, canal_whatsapp: { ativo: false, responder: false }, auditoria_integra: true, gerado_em: ha(0),
+    integracoes: { ok: 2, nao_verificada: 8 }, canal_whatsapp: { ativo: false, responder: false }, auditoria: { integra: true, em: ha(120) }, gerado_em: ha(0),
   },
   painel_agentes: [{
     id: "financeiro", nome: "Agente Financeiro", departamento: "financeiro", status: "pausado", versao: "0.4.0",

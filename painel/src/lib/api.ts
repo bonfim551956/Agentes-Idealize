@@ -26,7 +26,7 @@ export type Resumo = {
   custo_mes: { confirmado: number; estimado: number } | null;
   integracoes: Record<string, number>;
   canal_whatsapp: { ativo: boolean; responder: boolean };
-  auditoria_integra: boolean | null;
+  auditoria: { integra: boolean; em: string } | null;
   gerado_em: string;
 };
 

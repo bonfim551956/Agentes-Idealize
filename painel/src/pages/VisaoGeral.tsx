@@ -78,7 +78,7 @@ export function VisaoGeral() {
             <p className="mt-2 text-sm text-suave">
               Canal WhatsApp do financeiro: {r.canal_whatsapp.ativo ? "ligado" : "desligado"}
               {r.canal_whatsapp.ativo && (r.canal_whatsapp.responder ? ", respondendo no grupo" : ", em modo sombra (sem respostas)")}.
-              {r.auditoria_integra != null && <> Histórico auditado: {r.auditoria_integra ? "íntegro" : "ADULTERAÇÃO DETECTADA"}.</>}
+              {r.auditoria && <> Histórico auditado: {r.auditoria.integra ? "íntegro" : "ADULTERAÇÃO DETECTADA"} na verificação de {relativo(r.auditoria.em)}.</>}
               {" "}Atualizado {relativo(r.gerado_em)}.
             </p>
           </div>

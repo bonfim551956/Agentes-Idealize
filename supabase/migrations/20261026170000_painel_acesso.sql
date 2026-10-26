@@ -31,6 +31,32 @@ alter table core.painel_acessos enable row level security;
 alter table core.painel_acessos force row level security;
 revoke all on core.painel_acessos from public;
 
+-- Segredo para o "código da operação" mostrado no painel: o hash cru da operação é SHA-256 do payload completo
+-- e permitiria descobrir CPF/telefone mascarados por força bruta. O painel só vê um código derivado com segredo.
+-- Tabela sem trigger de auditoria (o valor nunca entra no histórico) e fechada por RLS.
+create table if not exists core.painel_segredo (
+  id    int primary key default 1 check (id = 1),
+  chave text not null
+);
+insert into core.painel_segredo (chave) select replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+where not exists (select 1 from core.painel_segredo);
+alter table core.painel_segredo enable row level security;
+alter table core.painel_segredo force row level security;
+revoke all on core.painel_segredo from public;
+
+-- Resultado das verificações da cadeia da auditoria (a verificação completa é cara; o resumo lê a última)
+create table if not exists core.painel_verificacoes (
+  id                  bigserial primary key,
+  em                  timestamptz not null default now(),
+  integra             boolean not null,
+  primeiro_adulterado bigint,
+  eventos             bigint not null,
+  principal_id        uuid references core.principais(id)
+);
+alter table core.painel_verificacoes enable row level security;
+alter table core.painel_verificacoes force row level security;
+revoke all on core.painel_verificacoes from public;
+
 insert into core.config (chave, valor) values
   ('painel.limite_por_minuto', '240'),
   ('painel.retencao_acessos_dias', '180'),
@@ -71,6 +97,7 @@ begin
     raise exception 'confirme o segundo fator (2FA) para continuar' using errcode = '42501';
   end if;
   v_lim := coalesce(nullif(core.cfg('painel.limite_por_minuto', '240'), '')::int, 240);
+  perform pg_advisory_xact_lock(hashtext('painel:' || v_eu::text));
   select count(*) into v_n from core.painel_acessos where principal_id = v_eu and em > now() - interval '1 minute';
   if v_n >= v_lim then raise exception 'muitas requisições; aguarde um minuto' using errcode = '54000'; end if;
   insert into core.painel_acessos (principal_id, funcao, alvo) values (v_eu, p_funcao, p_alvo);
@@ -123,12 +150,19 @@ begin
   return btrim(p_valor);
 end $$;
 
--- Mascaramento: CPF formatado, CPF/telefone/contas (10+ dígitos seguidos) → só os 4 últimos
+-- Mascaramento (ordem importa):
+--  1. hashes de 64 hex (códigos internos) nunca saem em claro;
+--  2. CPF com ou sem pontuação/espaços (123.456.789-09, 123 456 789 09, 123456789-09, 12345678909);
+--  3. telefone BR (+55 (13) 99123-4567, 13 99123 4567, 5513999990001);
+--  4. qualquer outra sequência de 10+ dígitos (contas, cartões) → só os 4 últimos.
+-- Números colados a letras (trechos de UUID/hex, códigos) não são tratados como documento.
 create or replace function painel._mascarar_texto(s text) returns text
 language sql immutable set search_path = pg_catalog as $$
-  select regexp_replace(
-           regexp_replace(s, '[0-9]{3}\.[0-9]{3}\.[0-9]{3}-([0-9]{2})', '***.***.***-\1', 'g'),
-           '[0-9]{6,}([0-9]{4})', '******\1', 'g')
+  select regexp_replace(regexp_replace(regexp_replace(regexp_replace(s,
+    '[0-9a-fA-F]{64}', '[código protegido]', 'g'),
+    '(?<![0-9A-Za-z,.-])[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- ]?([0-9]{2})(?![0-9A-Za-z-])', '***.***.***-\1', 'g'),
+    '(?<![0-9A-Za-z,.-])(\+?55[ ]?)?\(?[0-9]{2}\)?[ ]?9?[0-9]{4}[- ]?([0-9]{4})(?![0-9A-Za-z-])', '(**) *****-\2', 'g'),
+    '(?<![0-9A-Za-z,.-])[0-9]{6,}([0-9]{4})(?![0-9A-Za-z-])', '******\1', 'g')
 $$;
 
 create or replace function painel._mascarar(p jsonb) returns jsonb
@@ -139,16 +173,26 @@ begin
   case jsonb_typeof(p)
     when 'object' then
       r := '{}'::jsonb;
-      for k, v in select * from jsonb_each(p) loop r := r || jsonb_build_object(k, painel._mascarar(v)); end loop;
+      for k, v in select * from jsonb_each(p) loop r := r || jsonb_build_object(painel._mascarar_texto(k), painel._mascarar(v)); end loop;
       return r;
     when 'array' then
       r := '[]'::jsonb;
       for v in select * from jsonb_array_elements(p) loop r := r || jsonb_build_array(painel._mascarar(v)); end loop;
       return r;
     when 'string' then return to_jsonb(painel._mascarar_texto(p #>> '{}'));
+    -- número inteiro grande (CPF/telefone gravado como número) vira texto mascarado
+    when 'number' then
+      if p::text ~ '^[0-9]{10,}$' then return to_jsonb(painel._mascarar_texto(p::text)); end if;
+      return p;
     else return p;
   end case;
 end $$;
+
+create or replace function painel._codigo(p_hash text) returns text
+language sql stable security definer set search_path = core, pg_catalog as $$
+  select case when p_hash is null then null else
+    encode(sha256(convert_to((select chave from core.painel_segredo where id = 1) || ':' || p_hash, 'UTF8')), 'hex') end
+$$;
 
 create or replace function painel._final(s text) returns boolean
 language sql immutable set search_path = pg_catalog as $$
@@ -163,6 +207,8 @@ language plpgsql security definer set search_path = core, pg_catalog as $$
 declare v_eu uuid; p record;
 begin
   v_eu := painel._entrar('eu', null, false);
+  -- só com senha (sem 2FA) não revela papéis nem unidades
+  if coalesce(auth.jwt()->>'aal', '') <> 'aal2' then return jsonb_build_object('aal2', false); end if;
   select * into p from core.principais where id = v_eu;
   return jsonb_build_object(
     'nome', p.nome,
@@ -214,11 +260,12 @@ begin
                      'confirmado', coalesce(sum(valor) filter (where confirmado), 0),
                      'estimado', coalesce(sum(valor) filter (where not confirmado), 0))
                    from core.custos where em >= date_trunc('month', now())) end,
-    'integracoes', (select coalesce(jsonb_object_agg(status, n), '{}'::jsonb)
-                    from (select status, count(*) n from core.integracoes group by 1) x),
+    'integracoes', case when g then (select coalesce(jsonb_object_agg(status, n), '{}'::jsonb)
+                    from (select status, count(*) n from core.integracoes group by 1) x) else '{}'::jsonb end,
     'canal_whatsapp', jsonb_build_object('ativo', core.cfg('fin.whatsapp.ativo', 'false') = 'true',
                                          'responder', core.cfg('fin.whatsapp.responder', 'false') = 'true'),
-    'auditoria_integra', case when painel._pode(v_eu, 'consultar_auditoria') then core.verificar_auditoria() is null end,
+    'auditoria', case when painel._pode(v_eu, 'consultar_auditoria') then
+                   (select jsonb_build_object('integra', integra, 'em', em) from core.painel_verificacoes order by id desc limit 1) end,
     'gerado_em', now());
 end $$;
 
@@ -300,7 +347,7 @@ begin
       and (p_unidade is null or t.unidade_id = p_unidade)
       and (p_antes is null or t.atualizado_em < p_antes)
       and (p_busca is null or t.id::text = p_busca or t.tipo ilike '%' || p_busca || '%'
-           or t.motivo ilike '%' || p_busca || '%' or t.operacao ilike '%' || p_busca || '%')
+           or painel._mascarar_texto(t.motivo) ilike '%' || p_busca || '%' or t.operacao ilike '%' || p_busca || '%')
     order by t.atualizado_em desc limit lim) q);
 end $$;
 
@@ -330,7 +377,7 @@ begin
       'prioridade', t.prioridade, 'risco', t.risco, 'categoria', t.categoria, 'tentativas', t.tentativas,
       'max_tentativas', t.max_tentativas, 'prazo', t.prazo, 'proximo_em', t.proximo_em, 'executor', t.executor,
       'motivo', painel._mascarar_texto(t.motivo), 'payload', painel._mascarar(t.payload),
-      'resultado', painel._mascarar(t.resultado), 'hash_operacao', t.hash_operacao,
+      'resultado', painel._mascarar(t.resultado), 'hash_operacao', painel._codigo(t.hash_operacao),
       'solicitante', (select nome from core.principais where id = t.solicitante_id),
       'criado_em', t.criado_em, 'atualizado_em', t.atualizado_em),
     'politica', case when po.id is not null then jsonb_build_object('id', po.id, 'versao', po.versao, 'risco', po.risco,
@@ -348,8 +395,9 @@ begin
         'vale', ap.hash_operacao = t.hash_operacao and ap.expira_em > now()) order by ap.criado_em), '[]'::jsonb)
       from core.aprovacoes ap join core.principais pr on pr.id = ap.aprovador_id where ap.tarefa_id = t.id),
     'dependencias', (select coalesce(jsonb_agg(jsonb_build_object('id', d.depende_de, 'status', dt.status)), '[]'::jsonb)
-      from core.tarefa_dependencias d join core.tarefas dt on dt.id = d.depende_de where d.tarefa_id = t.id),
-    'incidentes', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'titulo', i.titulo, 'severidade', i.severidade,
+      from core.tarefa_dependencias d join core.tarefas dt on dt.id = d.depende_de
+      where d.tarefa_id = t.id and painel._alcanca(v_eu, 'consultar', dt.unidade_id)),
+    'incidentes', (select coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'titulo', painel._mascarar_texto(i.titulo), 'severidade', i.severidade,
         'status', i.status, 'ocorrencias', i.ocorrencias)), '[]'::jsonb) from core.incidentes i where i.tarefa_id = t.id),
     'historico', (select coalesce(jsonb_agg(jsonb_build_object('id', a.id, 'em', a.em, 'acao', a.acao,
         'ator', coalesce((select nome from core.principais where id = a.ator_id), a.ator),
@@ -374,7 +422,7 @@ begin
       'id', t.id, 'agente_id', t.agente_id, 'tipo', t.tipo, 'recurso', t.recurso, 'operacao', t.operacao,
       'unidade_id', t.unidade_id, 'valor', t.valor, 'risco', t.risco, 'prioridade', t.prioridade,
       'motivo', painel._mascarar_texto(t.motivo), 'payload', painel._mascarar(t.payload),
-      'hash_operacao', t.hash_operacao, 'criado_em', t.criado_em,
+      'hash_operacao', painel._codigo(t.hash_operacao), 'criado_em', t.criado_em,
       'solicitante', (select nome from core.principais where id = t.solicitante_id),
       'papel_aprovador', po.papel_aprovador, 'aprovadores_minimos', po.aprovadores_minimos,
       'aprovacoes_validas', (select count(*) from core.aprovacoes ap where ap.tarefa_id = t.id and ap.decisao = 'aprovar'
@@ -393,7 +441,7 @@ begin
   g := painel._pode(v_eu, 'consultar'); un := painel._unidades(v_eu);
   return (select coalesce(jsonb_agg(r), '[]'::jsonb) from (
     select jsonb_build_object('id', i.id, 'chave', i.chave_agrupamento, 'severidade', i.severidade, 'status', i.status,
-      'titulo', i.titulo, 'agente_id', i.agente_id, 'integracao_id', i.integracao_id, 'tarefa_id', i.tarefa_id,
+      'titulo', painel._mascarar_texto(i.titulo), 'agente_id', i.agente_id, 'integracao_id', i.integracao_id, 'tarefa_id', i.tarefa_id,
       'unidade_id', t.unidade_id, 'ocorrencias', i.ocorrencias, 'escalonado', i.escalonado,
       'primeira_em', i.primeira_em, 'ultima_em', i.ultima_em, 'resolvido_em', i.resolvido_em,
       'detalhes', painel._mascarar(i.detalhes),
@@ -420,7 +468,7 @@ begin
           'descricao', painel._mascarar_texto(coalesce(l.descricao, l.contraparte_nome))) end,
       'movimento', case when m.id is not null then jsonb_build_object('data', m.data, 'valor', m.valor, 'sentido', m.sentido,
           'conta_id', m.conta_id, 'descricao', painel._mascarar_texto(m.descricao)) end,
-      'pode_tratar', painel._alcanca(v_eu, 'tratar_pendencia', p.unidade_id),
+      'pode_tratar', painel._alcanca(v_eu, case when p.material then 'aceitar_pendencia_material' else 'tratar_pendencia' end, p.unidade_id),
       'pode_aceitar', painel._alcanca(v_eu, case when p.material then 'aceitar_pendencia_material' else 'tratar_pendencia' end, p.unidade_id)
     ) order by p.material desc, p.criado_em), '[]'::jsonb)
     from fin.pendencias p
@@ -479,7 +527,7 @@ begin
         'caixa_entradas', coalesce(cx.ent, 0), 'caixa_saidas', coalesce(cx.sai, 0),
         'pendencias_abertas', coalesce(pe.n, 0), 'pendencias_materiais', coalesce(pe.m, 0),
         'fechamento', (select jsonb_build_object('id', f.id, 'status', f.status, 'versao', f.versao,
-                         'pendencias_materiais', f.pendencias_materiais, 'pacote_hash', f.pacote_hash,
+                         'pendencias_materiais', f.pendencias_materiais, 'pacote_hash', painel._codigo(f.pacote_hash),
                          'preparado_por', f.preparado_por, 'validado_por', f.validado_por,
                          'decidido_em', f.decidido_em, 'criado_em', f.criado_em)
                        from fin.fechamentos f where f.unidade_id = u.id and f.competencia = c
@@ -528,7 +576,7 @@ begin
       'motivo', painel._mascarar_texto(a.motivo), 'hash', left(a.hash, 16)) r
     from core.auditoria a
     where (p_entidade is null or a.entidade = p_entidade) and (p_antes is null or a.id < p_antes)
-      and (p_busca is null or a.acao ilike '%' || p_busca || '%' or a.entidade_id = p_busca or a.motivo ilike '%' || p_busca || '%')
+      and (p_busca is null or a.acao ilike '%' || p_busca || '%' or a.entidade_id = p_busca or painel._mascarar_texto(a.motivo) ilike '%' || p_busca || '%')
     order by a.id desc limit lim) q);
 end $$;
 
@@ -538,9 +586,15 @@ declare v_eu uuid; v_primeiro bigint;
 begin
   v_eu := painel._entrar('auditoria_verificar');
   perform painel._exigir(v_eu, 'consultar_auditoria');
-  v_primeiro := core.verificar_auditoria();
-  return jsonb_build_object('integra', v_primeiro is null, 'primeiro_adulterado', v_primeiro,
-    'eventos', (select count(*) from core.auditoria), 'verificado_em', now());
+  -- verificação completa é cara: no máximo uma por minuto; nesse intervalo devolve a última
+  perform pg_advisory_xact_lock(hashtext('painel:verificar_auditoria'));
+  if not exists (select 1 from core.painel_verificacoes where em > now() - interval '1 minute') then
+    v_primeiro := core.verificar_auditoria();
+    insert into core.painel_verificacoes (integra, primeiro_adulterado, eventos, principal_id)
+    values (v_primeiro is null, v_primeiro, (select count(*) from core.auditoria), v_eu);
+  end if;
+  return (select jsonb_build_object('integra', integra, 'primeiro_adulterado', primeiro_adulterado,
+    'eventos', eventos, 'verificado_em', em) from core.painel_verificacoes order by id desc limit 1);
 end $$;
 
 create or replace function public.painel_operacao() returns jsonb
@@ -559,17 +613,18 @@ begin
              from cron.job' into v_cron;
   end if;
   return jsonb_build_object(
-    'integracoes', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'nome', nome, 'status', status,
-                      'escrita_habilitada', escrita_habilitada, 'ultimo_ok_em', ultimo_ok_em, 'observacoes', observacoes)
-                      order by nome), '[]'::jsonb) from core.integracoes),
+    'integracoes', case when g then (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'nome', nome, 'status', status,
+                      'escrita_habilitada', escrita_habilitada, 'ultimo_ok_em', ultimo_ok_em,
+                      'observacoes', painel._mascarar_texto(observacoes)) order by nome), '[]'::jsonb) from core.integracoes)
+                    else '[]'::jsonb end,
     'chaves', jsonb_build_object(
       'plataforma_pausada', core.cfg('plataforma_pausada', 'false') = 'true',
       'fin_whatsapp_ativo', core.cfg('fin.whatsapp.ativo', 'false') = 'true',
       'fin_whatsapp_responder', core.cfg('fin.whatsapp.responder', 'false') = 'true'),
-    'versoes', jsonb_build_object(
+    'versoes', case when g then jsonb_build_object(
       'componentes', (select coalesce(jsonb_object_agg(chave, valor), '{}'::jsonb) from core.config where chave like 'versao_%'),
       'agentes', (select coalesce(jsonb_object_agg(id, versao), '{}'::jsonb) from core.agentes),
-      'migracoes', v_mig),
+      'migracoes', v_mig) end,
     'agendamentos', jsonb_build_object(
       'cron', v_cron,
       'tarefas_futuras', (select count(*) from core.tarefas t where t.status = 'pronta' and t.proximo_em > now()
@@ -610,13 +665,16 @@ language plpgsql security definer set search_path = core, pg_catalog as $$
 declare v_eu uuid; t record;
 begin
   v_eu := painel._entrar('aprovar', p_tarefa::text);
-  select * into t from core.tarefas where id = p_tarefa;
+  select * into t from core.tarefas where id = p_tarefa for update;
   if t.id is null or not painel._alcanca(v_eu, 'consultar', t.unidade_id) then
     raise exception 'tarefa inexistente ou fora do seu alcance' using errcode = '42501';
   end if;
   if p_decisao not in ('aprovar', 'rejeitar') then raise exception 'decisão inválida' using errcode = '22023'; end if;
   if p_decisao = 'rejeitar' then perform painel._texto(5, p_comentario, 'motivo da rejeição'); end if;
-  return core.aprovar(p_tarefa, v_eu, p_decisao, p_hash, 'painel', nullif(btrim(coalesce(p_comentario, '')), ''));
+  if p_hash is distinct from painel._codigo(t.hash_operacao) then
+    raise exception 'aprovação não corresponde à operação atual (código divergente); recarregue e confira' using errcode = '42501';
+  end if;
+  return core.aprovar(p_tarefa, v_eu, p_decisao, t.hash_operacao, 'painel', nullif(btrim(coalesce(p_comentario, '')), ''));
 end $$;
 
 create or replace function public.painel_reconciliar(p_tarefa uuid, p_efetivada boolean, p_evidencia text, p_motivo text)
@@ -680,7 +738,8 @@ begin
   if p.status <> 'aberta' then raise exception 'pendência não está aberta (status=%)', p.status; end if;
   if p_acao not in ('resolver', 'aceitar') then raise exception 'ação inválida' using errcode = '22023'; end if;
   perform painel._exigir(v_eu, 'tratar_pendencia', p.unidade_id);
-  if p_acao = 'aceitar' and p.material then perform painel._exigir(v_eu, 'aceitar_pendencia_material', p.unidade_id); end if;
+  -- pendência que bloqueia o fechamento só é encerrada (resolvida ou aceita) por quem tem a alçada alta
+  if p.material then perform painel._exigir(v_eu, 'aceitar_pendencia_material', p.unidade_id); end if;
   v_txt := painel._texto(10, p_texto, case when p_acao = 'aceitar' then 'justificativa' else 'descrição da resolução' end);
   update fin.pendencias set status = case when p_acao = 'aceitar' then 'aceita' else 'resolvida' end,
     resolvido_por = v_eu, resolucao = v_txt, resolvido_em = now() where id = p_pendencia;
@@ -699,7 +758,10 @@ begin
   if f.id is null or not painel._alcanca(v_eu, 'consultar', f.unidade_id) then
     raise exception 'fechamento inexistente ou fora do seu alcance' using errcode = '42501';
   end if;
-  return fin.decidir_fechamento(p_fechamento, v_eu, coalesce(p_aprovar, false), p_hash, nullif(btrim(coalesce(p_motivo, '')), ''));
+  if p_hash is distinct from painel._codigo(f.pacote_hash) then
+    raise exception 'o pacote mudou desde que foi visto; recarregue e revise' using errcode = '42501';
+  end if;
+  return fin.decidir_fechamento(p_fechamento, v_eu, coalesce(p_aprovar, false), f.pacote_hash, nullif(btrim(coalesce(p_motivo, '')), ''));
 end $$;
 
 create or replace function public.painel_agente_status(p_agente text, p_status text, p_motivo text) returns void
@@ -740,6 +802,11 @@ begin
   if not exists (select 1 from core.principais where id = p_principal and tipo = 'usuario') then
     raise exception 'só pessoas são gerenciadas pelo painel (agentes não)' using errcode = '42501';
   end if;
+  -- separação de funções: quem tem papel de administrador ou diretoria só é alterado por mudança revisada no banco
+  if exists (select 1 from core.principal_papeis where principal_id = p_principal and papel_id in ('admin', 'diretoria')) then
+    raise exception 'pessoas com papel de administrador ou diretoria só são alteradas por mudança revisada no banco'
+      using errcode = '42501';
+  end if;
 end $$;
 
 create or replace function public.painel_papel_conceder(p_principal uuid, p_papel text, p_unidade text,
@@ -753,6 +820,9 @@ begin
   v_motivo := painel._texto(5, p_motivo, 'motivo');
   if not exists (select 1 from core.papeis where id = p_papel) or p_papel like 'agente\_%' then
     raise exception 'papel inválido para pessoa' using errcode = '22023';
+  end if;
+  if p_papel in ('admin', 'diretoria') then
+    raise exception 'papéis de administrador e diretoria só são dados por mudança revisada no banco' using errcode = '42501';
   end if;
   if p_unidade is not null and not exists (select 1 from core.unidades where id = p_unidade and ativo) then
     raise exception 'unidade inválida' using errcode = '22023';
@@ -791,8 +861,21 @@ begin
   perform painel._exigir(v_eu, 'administrar');
   perform painel._alvo_humano(v_eu, p_principal);
   v_motivo := painel._texto(5, p_motivo, 'motivo');
+  if exists (select 1 from core.principais where id = p_principal and auth_uid is not null) then
+    raise exception 'essa pessoa já tem login vinculado; troca de login só por mudança revisada no banco' using errcode = '42501';
+  end if;
+  if (select count(*) from auth.users where lower(email) = lower(btrim(coalesce(p_email, '')))) > 1 then
+    raise exception 'mais de um login com esse e-mail' using errcode = '22023';
+  end if;
   select id into v_uid from auth.users where lower(email) = lower(btrim(coalesce(p_email, '')));
   if v_uid is null then raise exception 'nenhum login com esse e-mail; crie o usuário no Supabase Auth primeiro' using errcode = '22023'; end if;
+  if (select email_confirmed_at from auth.users where id = v_uid) is null then
+    raise exception 'o e-mail desse login ainda não foi confirmado' using errcode = '22023';
+  end if;
+  -- a pessoa precisa ter ativado o autenticador ANTES do vínculo (ninguém "herda" a primeira configuração do 2FA)
+  if not exists (select 1 from auth.mfa_factors where user_id = v_uid and factor_type::text = 'totp' and status::text = 'verified') then
+    raise exception 'peça para a pessoa entrar uma vez e ativar o autenticador antes do vínculo' using errcode = '22023';
+  end if;
   if exists (select 1 from core.principais where auth_uid = v_uid and id <> p_principal) then
     raise exception 'esse login já está vinculado a outra pessoa' using errcode = '42501';
   end if;
@@ -815,23 +898,46 @@ begin
     p_principal::text, jsonb_build_object('ativo', v_antes), jsonb_build_object('ativo', coalesce(p_ativo, false), 'canal', 'painel'), v_motivo);
 end $$;
 
-create or replace function public.painel_politica_definir(p_papel text, p_recurso text, p_operacao text, p_categoria text,
-  p_risco text, p_unidade text, p_limite numeric, p_aprovadores int, p_papel_aprovador text, p_motivo text) returns bigint
-language plpgsql security definer set search_path = core, pg_catalog as $$
-declare v_eu uuid; v_motivo text; v_id bigint;
+-- Definição de políticas NÃO existe no painel: a matriz muda só por migração revisada (core.politica_definir),
+-- para que um único administrador não consiga criar, sozinho, um caminho para aprovar as próprias operações.
+
+-- Fechamento aprovado não volta a "rejeitado" (isso destravaria o mês). Reabrir mês aprovado é outro processo.
+create or replace function fin.decidir_fechamento(p_fechamento uuid, p_aprovador uuid, p_aprovar boolean,
+  p_hash_visto text, p_motivo text default null) returns text
+language plpgsql security definer set search_path = fin, core, pg_catalog as $$
+declare f record;
 begin
-  v_eu := painel._entrar('politica_definir', p_papel || ':' || p_recurso || '.' || p_operacao);
-  perform painel._exigir(v_eu, 'administrar');
-  v_motivo := painel._texto(5, p_motivo, 'motivo');
-  -- trava de segurança: o acesso administrativo ao painel não é alterado pelo próprio painel
-  if p_papel = 'admin' and p_recurso = 'painel' then
-    raise exception 'políticas do admin no painel só mudam por migração revisada' using errcode = '42501';
+  select * into f from fin.fechamentos where id = p_fechamento for update;
+  if f.id is null then raise exception 'fechamento inexistente'; end if;
+  if not exists (select 1 from core.principais pr join core.principal_papeis pp on pp.principal_id = pr.id
+                  where pr.id = p_aprovador and pr.tipo = 'usuario' and pr.ativo and pp.papel_id = 'diretoria'
+                    and (pp.unidade_id is null or pp.unidade_id = f.unidade_id) and (pp.valido_ate is null or pp.valido_ate > now())) then
+    raise exception 'somente a diretoria decide o fechamento' using errcode = '42501';
   end if;
-  v_id := core.politica_definir(v_eu, p_papel, p_recurso, p_operacao, p_categoria, p_risco, p_unidade, p_limite,
-                                coalesce(p_aprovadores, 1), p_papel_aprovador);
-  perform core.auditar(v_eu, null, 'politica_definida', 'politica', v_id::text, null,
-    jsonb_build_object('papel', p_papel, 'recurso', p_recurso, 'operacao', p_operacao, 'categoria', p_categoria, 'canal', 'painel'), v_motivo);
-  return v_id;
+  if p_hash_visto is distinct from f.pacote_hash then
+    raise exception 'o pacote mudou desde que foi visto; reabra e revise' using errcode = '42501';
+  end if;
+  if p_aprovar and f.status <> 'validado' then
+    raise exception 'só fechamento validado e sem pendências materiais pode ser aprovado (status=%)', f.status;
+  end if;
+  if not p_aprovar and f.status not in ('preparado', 'bloqueado', 'validado') then
+    raise exception 'fechamento com status % não pode ser rejeitado; reabrir mês aprovado exige processo próprio', f.status;
+  end if;
+  if not p_aprovar and coalesce(p_motivo,'') = '' then raise exception 'rejeição exige motivo'; end if;
+  update fin.fechamentos set status = case when p_aprovar then 'aprovado' else 'rejeitado' end,
+    aprovado_por = p_aprovador, decisao_motivo = p_motivo, decidido_em = now() where id = p_fechamento;
+  perform core.auditar(p_aprovador, null, case when p_aprovar then 'fechamento_aprovado' else 'fechamento_rejeitado' end,
+    'fin.fechamento', p_fechamento::text, null, jsonb_build_object('hash', p_hash_visto), p_motivo);
+  return case when p_aprovar then 'aprovado' else 'rejeitado' end;
+end $$;
+revoke all on function fin.decidir_fechamento(uuid, uuid, boolean, text, text) from public;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function fin.decidir_fechamento(uuid, uuid, boolean, text, text) from anon, authenticated';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    execute 'grant execute on function fin.decidir_fechamento(uuid, uuid, boolean, text, text) to service_role';
+  end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -858,6 +964,15 @@ begin
       execute format('grant execute on function %s to service_role', r.sig);
     end if;
   end loop;
+end $$;
+
+-- Funções criadas no futuro em public não nascem executáveis por anon/public (defesa em profundidade)
+do $$
+begin
+  execute 'alter default privileges in schema public revoke execute on functions from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'alter default privileges in schema public revoke execute on functions from anon';
+  end if;
 end $$;
 
 update core.config set valor = '0.5.0' where chave = 'versao_painel';
