@@ -66,7 +66,7 @@
 
 ## Próxima ação
 Abrir o painel quando o Diego decidir: login no Supabase Auth + cadastro público desligado → publicar na Vercel →
-vincular o login. Ligar a Etapa G só com "PODE FAZER" do Diego, nesta ordem (checklist em `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`):
+vincular o login (feito em 26/10: login do Diego vinculado, 2FA ativo). Ligar a Etapa G só com "PODE FAZER" do Diego, nesta ordem (checklist em `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`):
 segredos → apontar o webhook → agendar o worker → ativar agente → `fin.whatsapp.ativo=true` (com `responder=false`,
 modo sombra, em paralelo ao Finance AI). Depois: painel de pendências e liberação gradual por unidade.
 

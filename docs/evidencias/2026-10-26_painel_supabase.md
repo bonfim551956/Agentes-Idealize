@@ -34,6 +34,6 @@ Data: 26/10/2026 · Projeto Supabase Idealize · Decisão do Diego: "PODE FAZER,
 16 de navegador (computador e celular) — todos passando.
 
 ## Para abrir quando decidir
-1. Diego cria o login (Authentication → Add user, auto confirm) e desliga o cadastro público.
+1. [feito] Diego criou o login e ativou o 2FA; publicou o painel na Vercel (projeto `idealize-ai-painel`).
 2. Publicar o painel na Vercel (projeto novo).
 3. Diego entra e ativa o autenticador; vínculo do login ao principal dele por mudança revisada.
