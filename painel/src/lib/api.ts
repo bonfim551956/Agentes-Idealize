@@ -120,3 +120,12 @@ export type Usuarios = {
   politicas: { id: number; versao: number; papel: string; recurso: string; operacao: string; unidade: string | null; risco: string;
     categoria: string; limite_valor: number | null; aprovadores_minimos: number; papel_aprovador: string | null; valido_de: string }[];
 };
+
+export type LabPainel = {
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; recebidas: number; aplicadas: number; ignoradas: number } | null };
+  etapas: { col: number; nome: string; situacao: string; parado_dias: number | null; confirmada: boolean }[];
+  unidades: { id: string; nome: string; por_etapa: Record<string, number>; alertas: Record<string, number> }[];
+  alertas: { id: number; tipo: string; unidade_id: string; aberto_em: string; detalhe: Record<string, unknown> | null; os: string | null;
+    pedido: string | null; tipo_os: string | null; laboratorio: string | null; etapa: string; prazo: string | null; urgente: boolean;
+    entrou_etapa_em: string | null }[];
+};

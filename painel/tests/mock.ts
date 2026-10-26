@@ -154,6 +154,27 @@ export const RPC: Record<string, unknown> = {
       { id: 20, versao: 1, papel: "financeiro", recurso: "painel", operacao: "tratar_pendencia", unidade: null, risco: "medio", categoria: "automatica", limite_valor: null, aprovadores_minimos: 1, papel_aprovador: null, valido_de: "2026-10-26T12:00:00Z" },
     ],
   },
+  painel_lab: {
+    sincronizacao: { ativa: false, agente: "pausado", ultima: { em: ha(300), recebidas: 412, aplicadas: 410, ignoradas: 2 } },
+    etapas: [
+      { col: 0, nome: "Pedido", situacao: "andamento", parado_dias: 2, confirmada: false },
+      { col: 1, nome: "Aguardando lentes", situacao: "andamento", parado_dias: 7, confirmada: false },
+      { col: 2, nome: "Aguardando montagem", situacao: "andamento", parado_dias: 3, confirmada: false },
+      { col: 3, nome: "Em montagem", situacao: "andamento", parado_dias: 3, confirmada: false },
+      { col: 4, nome: "Avisado", situacao: "aguardando_cliente", parado_dias: 15, confirmada: false },
+      { col: 5, nome: "Entregue", situacao: "encerrada", parado_dias: null, confirmada: false },
+    ],
+    unidades: [
+      { id: "campinas", nome: "Campinas", por_etapa: { "0": 19, "1": 22, "3": 10, "4": 16 }, alertas: { prazo_vencido: 6, sem_pedido_lab: 2 } },
+      { id: "sao_vicente", nome: "São Vicente", por_etapa: { "0": 8, "1": 8, "4": 12 }, alertas: { aguardando_retirada: 3 } },
+    ],
+    alertas: [
+      { id: 1, tipo: "prazo_vencido", unidade_id: "campinas", aberto_em: ha(200), detalhe: { prazo: "2026-10-22", dias: 4, etapa: "Aguardando lentes" },
+        os: "1001", pedido: "BR-55821", tipo_os: "venda", laboratorio: "LAB PRÓPRIO", etapa: "Aguardando lentes", prazo: "2026-10-22", urgente: true, entrou_etapa_em: ha(9000) },
+      { id: 2, tipo: "aguardando_retirada", unidade_id: "sao_vicente", aberto_em: ha(400), detalhe: { dias: 21, limite_dias: 15, saldo_aberto: true },
+        os: "2002", pedido: "BR-55102", tipo_os: "venda", laboratorio: "LAB PRÓPRIO", etapa: "Avisado", prazo: "2026-10-01", urgente: false, entrou_etapa_em: ha(30000) },
+    ],
+  },
   painel_aprovar: "pronta", painel_plataforma_pausar: null, painel_reconciliar: "validando", painel_pendencia_tratar: null,
   painel_incidente_tratar: null, painel_fechamento_decidir: "aprovado", painel_agente_status: null, painel_papel_conceder: null,
 };

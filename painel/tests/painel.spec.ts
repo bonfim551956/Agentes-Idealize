@@ -136,7 +136,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -146,6 +146,17 @@ test.describe("estados e permissões", () => {
       expect(sw, `rolagem horizontal em ${rota}`).toBeLessThanOrEqual(w);
     }
     expect(erros).toEqual([]);
+  });
+
+  test("laboratório mostra alertas, filtra e avisa que o agente está desligado", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/laboratorio");
+    await expect(page.getByText(/Agente desligado: os números abaixo são da última leitura/)).toBeVisible();
+    await expect(page.getByText("OS 1001, pedido BR-55821")).toBeVisible();
+    await expect(page.getByText("Cliente avisado há 21 dias, com saldo a receber.")).toBeVisible();
+    await page.getByLabel("Tipo de alerta").selectOption("prazo_vencido");
+    await expect(page.getByText("OS 2002, pedido BR-55102")).toHaveCount(0);
+    await expect(page.getByText("OS 1001, pedido BR-55821")).toBeVisible();
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

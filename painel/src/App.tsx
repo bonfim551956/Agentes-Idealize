@@ -15,6 +15,7 @@ import { Custos } from "./pages/Custos";
 import { Auditoria } from "./pages/Auditoria";
 import { Operacao } from "./pages/Operacao";
 import { Usuarios } from "./pages/Usuarios";
+import { Laboratorio } from "./pages/Laboratorio";
 
 const cliente = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,7 @@ function Rotas() {
         <Route path="/pendencias" element={<Pendencias />} />
         <Route path="/financeiro" element={<Financeiro />} />
         <Route path="/agentes" element={<Agentes />} />
+        <Route path="/laboratorio" element={<Laboratorio />} />
         <Route path="/custos" element={<Custos />} />
         {eu.pode.auditoria && <Route path="/auditoria" element={<Auditoria />} />}
         <Route path="/operacao" element={<Operacao />} />

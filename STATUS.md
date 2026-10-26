@@ -1,6 +1,6 @@
 # STATUS — Idealize AI
 
-**Fase atual:** Painel administrativo (v0.5.0) — camada de acesso aplicada no Supabase, painel pronto e **não publicado**; nada rodando (decisão do Diego). Etapa G instalada e desligada.
+**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Laboratório instalado e pausado; nada rodando.
 **Último estado validado:** 26/10/2026 — v0.5.0 · 324 testes SQL + concorrência + 11 Deno + 10 unidade + 16 navegador, 0 falhas · Supabase: 41 funções idênticas às testadas, nada rodando
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
@@ -30,7 +30,9 @@
       (37 testes SQL + 11 Deno, incluindo ponta a ponta com Postgres real) — `docs/evidencias/2026-10-26_etapa_g_whatsapp.md`
 - [x] Painel administrativo (§4.1, §17, §21) — camada de acesso `20261026170000` aplicada (100 testes SQL), front em
       `painel/` (React; login + 2FA obrigatório), revisão de segurança independente tratada, ADR 0003 —
-      `docs/evidencias/2026-10-26_painel_supabase.md`. **Não publicado** (decisão do Diego).
+      `docs/evidencias/2026-10-26_painel_supabase.md`. Publicado pelo Diego na Vercel; login dele vinculado com 2FA.
+- [x] Agente de Laboratório v0.1.0 (§5.3) — `20261027090000`, `lab-sync`, tela no painel; instalado PAUSADO e sem
+      leitura do ADM — `docs/evidencias/2026-10-27_agente_laboratorio.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
