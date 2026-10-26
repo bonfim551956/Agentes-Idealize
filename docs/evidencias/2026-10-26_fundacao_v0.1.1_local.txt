@@ -1,0 +1,260 @@
+→ migração 20261026090000_core_fundacao.sql
+→ migração 20261026113000_core_search_path_triggers.sql
+→ testes
+ politica_definir 
+------------------
+                1
+(1 row)
+
+ politica_definir 
+------------------
+                2
+(1 row)
+
+ politica_definir 
+------------------
+                3
+(1 row)
+
+ politica_definir 
+------------------
+                4
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ erro 
+------
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+ ok 
+----
+ 
+(1 row)
+
+    grupo     |                                   teste                                   |  r   |                                detalhe                                 
+--------------+---------------------------------------------------------------------------+------+------------------------------------------------------------------------
+ autorizacao  | automática dentro do limite                                               | PASS | autorizada automaticamente
+ autorizacao  | acima do limite vira aprovação                                            | PASS | exige aprovação
+ autorizacao  | unidade fora do escopo do agente é negada                                 | PASS | nenhuma política autoriza (negação por padrão)
+ autorizacao  | unidade inativa é negada                                                  | PASS | unidade inexistente ou inativa
+ autorizacao  | operação sem política: negação por padrão                                 | PASS | nenhuma política autoriza (negação por padrão)
+ autorizacao  | pagamento é proibido                                                      | PASS | política proíbe a operação
+ autorizacao  | principal inativo é negado                                                | PASS | principal inexistente ou inativo
+ autorizacao  | agente não altera a matriz de permissões                                  | PASS | somente pessoas alteram a matriz de permissões
+ autorizacao  | pessoa sem admin não altera a matriz                                      | PASS | ator sem papel admin global
+ autorizacao  | políticas não podem ser apagadas                                          | PASS | políticas não são apagadas; desative (ativo=false)
+ autorizacao  | redefinir política gera nova versão e desativa a anterior                 | PASS | 
+ tarefas      | mesma chave de idempotência devolve a mesma tarefa                        | PASS | 
+ tarefas      | só uma tarefa criada para a chave                                         | PASS | 
+ tarefas      | tarefa automática nasce pronta                                            | PASS | 
+ tarefas      | operação proibida nasce rejeitada (e fica registrada)                     | PASS | 
+ tarefas      | unidade fora do escopo nasce rejeitada                                    | PASS | 
+ tarefas      | solicitante inativo não cria tarefa                                       | PASS | solicitante inexistente ou inativo
+ tarefas      | chave de idempotência obrigatória                                         | PASS | chave de idempotência obrigatória (mín. 8 caracteres)
+ tarefas      | agente pausado: tarefa bloqueada                                          | PASS | 
+ tarefas      | agente pausado não reivindica nada                                        | PASS | 
+ aprovacoes   | operação de alto risco aguarda aprovação                                  | PASS | 
+ aprovacoes   | solicitante não aprova a própria operação                                 | PASS | quem solicitou não pode aprovar a própria operação
+ aprovacoes   | agente não aprova                                                         | PASS | somente pessoas ativas aprovam
+ aprovacoes   | aprovador fora da alçada é recusado                                       | PASS | aprovador fora da alçada
+ aprovacoes   | aprovação com hash de outra operação é recusada                           | PASS | aprovação não corresponde à operação atual (hash divergente)
+ aprovacoes   | com 1 de 2 aprovações continua aguardando                                 | PASS | aguardando_aprovacao
+ aprovacoes   | admin sem papel de diretoria não conta como aprovador                     | PASS | aprovador fora da alçada
+ aprovacoes   | mesmo aprovador não aprova duas vezes                                     | PASS | duplicate key value violates unique constraint "aprovacoes_tarefa_id_a
+ aprovacoes   | duas pessoas autorizadas liberam a tarefa                                 | PASS | pronta
+ aprovacoes   | aprovação expirada é revalidada antes de executar                         | PASS | 
+ aprovacoes   | rejeição encerra a tarefa                                                 | PASS | rejeitada
+ execucao     | reivindica a tarefa pronta                                                | PASS | 
+ execucao     | segunda reivindicação não pega a mesma tarefa                             | PASS | 
+ execucao     | sucesso vai para validação, não conclui direto                            | PASS | validando
+ validacao    | executor não valida a própria execução                                    | PASS | o executor não pode validar a própria execução
+ validacao    | rejeição sem motivo é recusada                                            | PASS | rejeição exige motivo
+ validacao    | validador independente conclui                                            | PASS | concluida
+ validacao    | validação rejeitada bloqueia para revisão (não conclui)                   | PASS | bloqueada
+ validacao    | registro da validação fica separado da execução                           | PASS | 
+ recuperacao  | lease vencido vira INCERTA (não reexecuta às cegas)                       | PASS | 
+ recuperacao  | incerteza abre incidente alto                                             | PASS | 
+ recuperacao  | execução marcada como lease_expirado                                      | PASS | 
+ recuperacao  | agente não reconcilia tarefa incerta                                      | PASS | reconciliação é humana
+ recuperacao  | reconciliação confirmando não-efetivação libera nova tentativa            | PASS | pronta
+ recuperacao  | tarefa reconciliada volta a ser executada                                 | PASS | 
+ recuperacao  | timeout após escrita externa vira incerta                                 | PASS | incerta
+ retentativa  | erro seguro reagenda com backoff                                          | PASS | 
+ retentativa  | tarefa em backoff não é reivindicada antes da hora                        | PASS | 
+ retentativa  | esgotou tentativas → falhou                                               | PASS | falhou
+ retentativa  | falha repetida abre incidente                                             | PASS | 
+ execucao     | outro executor não registra resultado de tarefa alheia                    | PASS | tarefa não está em execução por este executor (status=concluida)
+ fila         | dependência pendente segura tarefa prioritária; pega a próxima prioridade | PASS | 
+ fila         | depois a tarefa sem dependência                                           | PASS | 
+ fila         | dependência concluída libera a tarefa dependente                          | PASS | 
+ autorizacao  | permissão revogada após a criação bloqueia na hora de executar            | PASS | 
+ contingencia | plataforma pausada bloqueia tarefa nova                                   | PASS | 
+ contingencia | monitoramento autorizado continua com plataforma pausada                  | PASS | 
+ custos       | 80% do limite gera alerta baixo                                           | PASS | 
+ custos       | limite atingido escala a severidade (mesmo incidente, sem duplicar)       | PASS | 
+ custos       | acima do limite: tarefa não crítica bloqueada                             | PASS | 
+ custos       | tarefa crítica (prioridade 1) segue                                       | PASS | 
+ custos       | estimado e confirmado ficam separados                                     | PASS | 
+ incidentes   | repetições agrupadas contam ocorrências                                   | PASS | 
+ incidentes   | nova ocorrência após resolvido abre incidente novo (não é ocultada)       | PASS | 
+ auditoria    | cadeia de hash íntegra                                                    | PASS | 
+ auditoria    | transições de tarefa auditadas                                            | PASS | 
+ auditoria    | alterações na matriz auditadas                                            | PASS | 
+ auditoria    | UPDATE na auditoria é bloqueado                                           | PASS | core.auditoria é append-only (UPDATE bloqueado)
+ auditoria    | DELETE na auditoria é bloqueado                                           | PASS | core.auditoria é append-only (DELETE bloqueado)
+ auditoria    | TRUNCATE na auditoria é bloqueado                                         | PASS | core.auditoria é append-only (TRUNCATE bloqueado)
+ auditoria    | adulteração é detectada pela verificação da cadeia                        | PASS | detectado no id 5
+ auditoria    | após o rollback a cadeia segue íntegra                                    | PASS | 
+ seguranca    | anon não lê core.tarefas                                                  | PASS | permission denied for schema core
+ seguranca    | anon não chama criar_tarefa                                               | PASS | permission denied for schema core
+ seguranca    | authenticated não chama aprovar                                           | PASS | permission denied for schema core
+ seguranca    | RLS ligado e forçado em todas as tabelas do core                          | PASS | 
+ seguranca    | toda função SECURITY DEFINER do core tem search_path fixo                 | PASS | 
+ seguranca    | texto malicioso no payload não altera categoria nem permissões            | PASS | 
+
+ pass | fail 
+------+------
+   78 |    0
+
+→ concorrência (4 workers × 200 tarefas)
+NOTICE:  worker w3 processou 41
+NOTICE:  worker w4 processou 42
+NOTICE:  worker w2 processou 43
+NOTICE:  worker w1 processou 74
+tarefas=200 validando=200 execucoes=200 duplicadas=0 workers_usados=4
+cadeia_auditoria=integra eventos=703
