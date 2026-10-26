@@ -29,3 +29,12 @@ O Sistema ADM foi apenas lido. Detalhes com nomes/valores ficam em `dados_privad
   9/104 ficaram sem par. A trava anti-duplicidade segurou (nenhuma despesa em dobro). Teste de regressão adicionado.
 - **Validador (corrigido)**: somava duas vezes os lançamentos sem categoria na prova da DRE. O motor estava certo.
 - **Classificação do Finance AI**: 5 grupos de erro e 6 decisões pendentes — relatório privado entregue ao Diego.
+
+## Decisões aplicadas (26/10 ~14:30, migração `20261026150000` + script privado)
+- Custos compartilhados com Sorocaba e Piracicaba: despesa/receita de SV na categoria `custos_compartilhados` / `recebimento_intercompany`.
+- Boleto Sicredi de 23/10 = pagamento de fatura do cartão: saiu da DRE; fatura aberta como divergente até as compras serem lançadas.
+- Boleto pago e devolvido em 09/10: estorno; líquido zero na DRE, as duas movimentações continuam no caixa.
+- Colaborador: folha; PIX nos últimos 2 dias (corridos ou úteis) do mês = vale-transporte.
+- Saldo de abertura (30/09) confirmado.
+- 30 reclassificações, todas com motivo e antes/depois na auditoria; cadeia íntegra.
+- Validador independente: sem falhas, incluindo saldo inicial + entradas − saídas = saldo final.

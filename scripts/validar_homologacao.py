@@ -61,8 +61,18 @@ checar(D(str(cc['entradas'])) == cred - tu_c and D(str(cc['saidas'])) == deb - t
 dre_r = sum(D(str(x['valor'])) for x in res['dre'] if x['natureza'] == 'receita')
 dre_d = sum(D(str(x['valor'])) for x in res['dre'] if x['natureza'] == 'despesa')
 sem_cat = sum(D(str(p['valor'])) for p in pares if p['natureza'] in ('receita','despesa') and p['cat'] is None)
-# a DRE já inclui os lançamentos sem categoria (sem_cat é só informativo)
-checar(dre_r + dre_d + tu_c + tu_d == cred + deb, "DRE + transferências entre unidades ≠ total do extrato")
+# a DRE já inclui os lançamentos sem categoria (sem_cat é só informativo).
+# Fora da DRE: transferências entre unidades e pagamento de fatura. Estorno abate a original, e o próprio
+# movimento do estorno também está no extrato — por isso entra 2× na identidade.
+fat = sum(D(str(p['valor'])) for p in pares if p['natureza'] == 'pagamento_fatura')
+est = sum(D(str(p['valor'])) for p in pares if p['natureza'] == 'estorno')
+checar(dre_r + dre_d + tu_c + tu_d + fat + 2 * est == cred + deb,
+       f"DRE ({dre_r}/{dre_d}) + transferências ({tu_c}/{tu_d}) + fatura ({fat}) + 2×estorno ({est}) ≠ extrato ({cred}+{deb})")
+if res.get('saldo') and res['saldo'].get('inicial') is not None:
+    si, sf = D(str(res['saldo']['inicial'])), D(str(res['saldo']['final']))
+    checar(si + cred - deb == sf, f"saldo inicial {si} + créditos − débitos ≠ saldo final {sf}")
+else:
+    avisos.append("saldo inicial não confirmado: abertura não verificada")
 checar(res['auditoria']['adulterado_em'] is None, "cadeia de auditoria adulterada")
 
 # divergência de classificação: Finance AI × regra declarada pelo Diego (mesmo movimento)
@@ -86,6 +96,7 @@ rel = dict(
   divergencias_classificacao=[(n, a, b, str(v), d) for n, a, b, v, d in sorted(diverg)],
   dre=dict(receitas=str(dre_r), despesas=str(dre_d), sem_categoria=str(sem_cat), transf_unid_entrada=str(tu_c), transf_unid_saida=str(tu_d)),
   pendencias=[(p['tipo'], p['material'], str(p['valor']), p['mov'] or '') for p in res['pendencias']],
+  pagamento_fatura=str(fat), estornos=str(est), avisos=avisos,
   falhas=falhas)
 json.dump(rel, sys.stdout, ensure_ascii=False, indent=1, default=str)
 sys.exit(1 if falhas else 0)

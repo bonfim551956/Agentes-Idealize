@@ -80,3 +80,8 @@ insert into fin.regras_classificacao (padrao, sentido, natureza, categoria_id, u
   ('09664937000136', 'debito', 'despesa', 'contabilidade', null, 30, 'manual', 'Diego: Organização Contábil = contabilidade'),
   ('DLKNET', 'debito', 'despesa', 'correios', null, 30, 'manual', 'Diego: DLKNET = Correios'),
   ('CasaLuanda', 'debito', 'despesa', 'reunioes', null, 30, 'manual', 'Diego: CasaLuanda = café para reunião');
+
+-- Cartão de crédito da loja de São Vicente (faturas pagas por boleto Sicredi) — decisão do Diego em 26/10/2026
+insert into fin.contas (id, apelido, tipo, unidade_id, empresa_id, instituicao) values
+  ('cartao_sicredi_sv','Cartão Sicredi São Vicente','cartao_credito','sao_vicente','idealize_litoral','Sicredi (748)')
+on conflict (id) do nothing;

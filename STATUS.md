@@ -1,7 +1,7 @@
 # STATUS — Idealize AI
 
-**Fase atual:** F em andamento — homologação em modo observação com o extrato real de SV concluída (205/205 movimentos, 104/104 lançamentos do Finance AI); aguardando decisões de classificação do Diego
-**Último estado validado:** 26/10/2026 14:10 — `fin` v0.2.2 · local 78 + 71 + 8 + concorrência · Supabase: dados reais de SV out/2026 validados por script independente
+**Fase atual:** F — decisões do Diego aplicadas (v0.3.0); outubro de SV reprocessado e validado; faltam 4 confirmações e a fatura do cartão
+**Último estado validado:** 26/10/2026 ~14:40 — `fin` v0.3.0 · local 78 + 71 + 8 + 27 + concorrência · Supabase: validador independente sem falhas, saldo de abertura conferido
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
 
@@ -23,6 +23,9 @@
 - [x] Cadastro de produção (`supabase/seed/producao_cadastro.sql`) + regras de pessoas fora do Git
 - [x] F (observação) — extrato Sicredi SV 01–26/10 + Finance AI: 205/205 e 104/104, validador independente ok
       (`docs/evidencias/2026-10-26_homologacao_sicredi_sv.md`)
+- [x] v0.3.0 — decisões do Diego: estorno (líquido zero na DRE), pagamento de fatura de cartão com pendência até as
+      compras, VT no fim do mês por regra com condição de data, reclassificação/regra/saldo só por pessoa e auditados
+      (`20261026150000`, 27 testes)
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
@@ -47,9 +50,8 @@
 ## Bloqueios / decisões pendentes (dono: Diego)
 1. Repositório público até o fim do projeto (decisão do Diego). Por isso dados pessoais ficam só em `dados_privados/`.
 2. Correção de controle de acesso no sistema legado (crítico — ver documento interno)
-3. Decisões da homologação: R M Comércio (despesa × transferência), Sicredi R$ 4.165,55 (tarifa × fatura de cartão),
-   devolução do boleto da Micheli (estorno), 4 conflitos comprovante × regra, regra de colaborador ampla demais
-4. Saldo da conta em 30/09 para validar a abertura
+3. Confirmar 4 casos em que o comprovante diz uma coisa e a regra outra (Débora, Dulcineia, Thayná R$ 1.347, Credtech)
+4. Fatura do cartão Sicredi paga em 23/10 (R$ 4.165,55) — para lançar as compras na DRE
 5. Extratos das outras contas/unidades para estender a homologação
 
 ## Defeitos encontrados e corrigidos pelos testes financeiros
