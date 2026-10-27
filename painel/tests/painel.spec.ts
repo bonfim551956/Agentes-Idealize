@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -262,6 +262,16 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("Salário a partir de 01/10/2026", { exact: false })).toBeVisible();
     await page.getByLabel("Mês da lista para a contabilidade").fill("2026-09");
     await expect.poll(() => chamadas.filter((c) => c.fn === "painel_rh").at(-1)?.corpo).toEqual({ p_unidade: null, p_mes: "2026-09-01" });
+  });
+
+  test("retorno das campanhas mostra faturamento, retorno e avisos de estimativa", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/retorno");
+    await expect(page.getByText(/Agente desligado/)).toBeVisible();
+    await expect(page.getByText("R$ 168.400,00").first()).toBeVisible();
+    await expect(page.getByText("7,3×").first()).toBeVisible();
+    await expect(page.getByText("1.390 de 1.420 leads com telefone")).toBeVisible();
+    await expect(page.getByText(/O telefone não é guardado/)).toBeVisible();
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

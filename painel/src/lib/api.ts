@@ -187,3 +187,12 @@ export type RhPainel = {
     mudancas: { nome: string; unidade_id: string; tipo: "cargo" | "salario"; data: string }[];
   };
 };
+
+export type AtribuicaoPainel = {
+  desde: string; ate: string; janela_conversao_dias: number; janela_aberta_desde: string;
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; leads: number; leads_com_telefone: number; vendas: number; conversoes: number } | null };
+  lojas: { unidade_id: string; investido: number; resultados_meta: number; leads: number; leads_com_telefone: number; compraram: number;
+    compraram_novos: number; faturamento: number; faturamento_novos: number }[];
+  campanhas: { campanha_id: string; nome: string | null; unidade_id: string; investido: number; leads: number; compraram: number;
+    faturamento: number; faturamento_novos: number; exatos: number }[];
+};

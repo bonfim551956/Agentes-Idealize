@@ -226,6 +226,14 @@ export const RPC: Record<string, unknown> = {
     ],
   },
   painel_marketing_conta_loja: null,
+  painel_atribuicao: {
+    desde: "2026-09-28", ate: "2026-10-27", janela_conversao_dias: 60, janela_aberta_desde: "2026-09-28",
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null },
+    lojas: [{ unidade_id: "campinas", investido: 23005.37, resultados_meta: 1576, leads: 1420, leads_com_telefone: 1390, compraram: 212,
+      compraram_novos: 180, faturamento: 168400, faturamento_novos: 141200 }],
+    campanhas: [{ campanha_id: "52568233317239", nome: "[ENGAJAMENTO] [MENSAGEM] CAMPINAS", unidade_id: "campinas", investido: 23005.37,
+      leads: 1402.3, compraram: 209.6, faturamento: 166300.5, faturamento_novos: 139000, exatos: 0 }],
+  },
   painel_rh: {
     hoje: "2026-10-26", mes: "2026-10-01",
     sincronizacao: { ativa: false, agente: "pausado", ultima: null },
