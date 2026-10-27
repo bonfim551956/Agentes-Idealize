@@ -1,6 +1,6 @@
 # STATUS — Idealize AI
 
-**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Laboratório, Comercial, Marketing, Caixa e Cobranças instalados e pausados; nada rodando. Falta RH.
+**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Os 6 agentes (Laboratório, Comercial, Marketing, Caixa, Cobranças, RH) instalados e pausados; nada rodando.
 **Último estado validado:** 26/10/2026 — v0.5.0 · 324 testes SQL + concorrência + 11 Deno + 10 unidade + 16 navegador, 0 falhas · Supabase: 41 funções idênticas às testadas, nada rodando
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
@@ -42,6 +42,8 @@
       Pendente: leitor do arquivo da Stone (aguardando arquivo de exemplo).
 - [x] Agente de Cobranças v0.1.0 — `20261027130000`, `cobrancas-sync` (ADM só leitura + Asaas só GET), visão no ADM
       (`docs/adm/cobrancas_leitura.sql`), tela no painel; instalado PAUSADO — `docs/evidencias/2026-10-27_agente_cobrancas.md`
+- [x] Agente de RH v0.1.0 — `20261027140000`, `rh-sync` (RH 360 só leitura), visões no RH 360 (`docs/rh360/rh_leitura.sql`),
+      tela no painel; instalado PAUSADO — `docs/evidencias/2026-10-27_agente_rh.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
