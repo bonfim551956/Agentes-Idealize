@@ -272,6 +272,10 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("7,3×").first()).toBeVisible();
     await expect(page.getByText("1.390 de 1.420 leads com telefone")).toBeVisible();
     await expect(page.getByText(/O telefone não é guardado/)).toBeVisible();
+    const ana = page.getByRole("row", { name: /Atendente Ana/ });
+    await expect(ana.getByRole("cell", { name: "20%" })).toBeVisible();
+    await expect(ana.getByRole("cell", { name: "R$ 800,00" })).toBeVisible();
+    await expect(page.getByText("Sem responsável na Kommo")).toBeVisible();
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

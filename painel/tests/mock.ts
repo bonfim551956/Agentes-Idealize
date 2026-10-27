@@ -233,6 +233,10 @@ export const RPC: Record<string, unknown> = {
       compraram_novos: 180, faturamento: 168400, faturamento_novos: 141200 }],
     campanhas: [{ campanha_id: "52568233317239", nome: "[ENGAJAMENTO] [MENSAGEM] CAMPINAS", unidade_id: "campinas", investido: 23005.37,
       leads: 1402.3, compraram: 209.6, faturamento: 166300.5, faturamento_novos: 139000, exatos: 0 }],
+    atendentes: [
+      { responsavel_id: 7, nome: "Atendente Ana", unidades: ["campinas"], leads: 600, compraram: 120, compraram_novos: 100, faturamento: 96000, faturamento_novos: 80000 },
+      { responsavel_id: null, nome: null, unidades: ["campinas"], leads: 40, compraram: 2, compraram_novos: 2, faturamento: 1600, faturamento_novos: 1600 },
+    ],
   },
   painel_rh: {
     hoje: "2026-10-26", mes: "2026-10-01",

@@ -29,6 +29,7 @@ create table atr.leads (
   id               bigint primary key,           -- id do lead na Kommo
   funil_id         bigint,
   unidade_id       text references core.unidades(id),
+  responsavel_id   bigint,                       -- atendente responsável na Kommo
   criado_em        timestamptz not null,
   tel_hash         text check (tel_hash ~ '^[0-9a-f]{64}$'),
   origem           text,                         -- etiquetas/UTM/origem da Kommo (sem dados pessoais)
@@ -37,6 +38,7 @@ create table atr.leads (
 );
 create index atr_leads_unidade_criado on atr.leads (unidade_id, criado_em);
 create index atr_leads_hash on atr.leads (tel_hash);
+create index atr_leads_responsavel on atr.leads (responsavel_id);
 
 create table atr.vendas (
   id               text primary key,             -- id da OS no ADM
@@ -141,7 +143,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Lote: {leads:[{id,funil_id,criado_em(epoch s),tel_hash,origem}], vendas:[{id,unidade,dia,tipo,valor,tel_hash}]}
+-- Lote: {leads:[{id,funil_id,responsavel_id,criado_em(epoch s),tel_hash,origem}], vendas:[{id,unidade,dia,tipo,valor,tel_hash}]}
 -- Leads: substitui os da janela lida; vendas: retrato completo do ADM.
 -- ---------------------------------------------------------------------------
 create or replace function atr.aplicar_lote(p_tarefa uuid, p_lote jsonb) returns jsonb
@@ -165,12 +167,13 @@ begin
   select min(to_timestamp((x->>'criado_em')::bigint)) into v_min from jsonb_array_elements(p_lote->'leads') x where (x->>'criado_em') ~ '^[0-9]{9,11}$';
   if v_min is not null then delete from atr.leads where criado_em >= v_min; end if;
 
-  insert into atr.leads (id, funil_id, unidade_id, criado_em, tel_hash, origem, sincronizacao_id)
-  select r.id, r.funil_id, (select f.unidade_id from com.funis f where f.id = r.funil_id), to_timestamp(r.criado_em),
+  insert into atr.leads (id, funil_id, unidade_id, responsavel_id, criado_em, tel_hash, origem, sincronizacao_id)
+  select r.id, r.funil_id, (select f.unidade_id from com.funis f where f.id = r.funil_id), nullif(r.responsavel_id, 0), to_timestamp(r.criado_em),
          nullif(r.tel_hash, ''), left(nullif(btrim(r.origem), ''), 300), v_s
-  from jsonb_to_recordset(p_lote->'leads') r(id bigint, funil_id bigint, criado_em bigint, tel_hash text, origem text)
+  from jsonb_to_recordset(p_lote->'leads') r(id bigint, funil_id bigint, responsavel_id bigint, criado_em bigint, tel_hash text, origem text)
   where r.id is not null and r.criado_em > 0
-  on conflict (id) do update set funil_id = excluded.funil_id, unidade_id = excluded.unidade_id, criado_em = excluded.criado_em,
+  on conflict (id) do update set funil_id = excluded.funil_id, unidade_id = excluded.unidade_id, responsavel_id = excluded.responsavel_id,
+    criado_em = excluded.criado_em,
     tel_hash = excluded.tel_hash, origem = excluded.origem, sincronizacao_id = excluded.sincronizacao_id;
   get diagnostics n_l = row_count;
   select count(*) into n_lt from atr.leads where sincronizacao_id = v_s and tel_hash is not null;
@@ -270,7 +273,7 @@ begin
     group by ct.unidade_id, m.dia, m.campanha_id;
   drop table if exists _ld;
   create temp table _ld on commit drop as
-    select l.id, l.unidade_id, (l.criado_em at time zone 'America/Sao_Paulo')::date dia, l.campanha_id, l.tel_hash is not null com_tel,
+    select l.id, l.unidade_id, l.responsavel_id, (l.criado_em at time zone 'America/Sao_Paulo')::date dia, l.campanha_id, l.tel_hash is not null com_tel,
            c.valor, c.nova, c.venda_id is not null convertido
     from atr.leads l left join atr.conversoes c on c.lead_id = l.id
     where (l.criado_em at time zone 'America/Sao_Paulo')::date between v_ini and d and l.unidade_id = any(un);
@@ -293,6 +296,15 @@ begin
         'faturamento', coalesce((select sum(valor) from _ld l where l.unidade_id = u.unidade_id and l.convertido), 0),
         'faturamento_novos', coalesce((select sum(valor) from _ld l where l.unidade_id = u.unidade_id and l.convertido and l.nova), 0)) x
       from (select distinct unidade_id from _gasto union select distinct unidade_id from _ld) u where u.unidade_id is not null) q),
+    -- por atendente responsável na Kommo
+    'atendentes', (select coalesce(jsonb_agg(x order by (x->>'faturamento')::numeric desc, (x->>'leads')::int desc), '[]'::jsonb) from (
+      select jsonb_build_object('responsavel_id', l.responsavel_id,
+        'nome', coalesce((select nome from com.usuarios u where u.id = l.responsavel_id), case when l.responsavel_id is null then null else 'Atendente ' || l.responsavel_id end),
+        'unidades', (select jsonb_agg(distinct l2.unidade_id) from _ld l2 where l2.responsavel_id is not distinct from l.responsavel_id),
+        'leads', count(*), 'compraram', count(*) filter (where l.convertido), 'compraram_novos', count(*) filter (where l.convertido and l.nova),
+        'faturamento', coalesce(sum(l.valor) filter (where l.convertido), 0),
+        'faturamento_novos', coalesce(sum(l.valor) filter (where l.convertido and l.nova), 0)) x
+      from _ld l group by l.responsavel_id) q),
     -- por campanha: leads exatos + rateio dos leads sem origem pelo gasto da campanha no dia/loja
     'campanhas', (select coalesce(jsonb_agg(x order by (x->>'investido')::numeric desc), '[]'::jsonb) from (
       select jsonb_build_object('campanha_id', g.campanha_id, 'nome', (select nome from mkt.campanhas where id = g.campanha_id),

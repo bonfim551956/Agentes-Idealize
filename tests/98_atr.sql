@@ -17,6 +17,7 @@ update core.agentes set status = 'ativo' where id = 'atribuicao';
 update core.config set valor = 'true' where chave = 'atr.sync.ativo';
 
 -- Funil Kommo de Campinas e campanhas da Meta (contas mapeadas para a loja)
+insert into com.usuarios (id, nome) values (901, 'Atendente Ana Atr'), (902, 'Atendente Bia Atr') on conflict (id) do nothing;
 insert into com.funis (id, nome, unidade_id) values (7001, 'Funil Loja A', 'atr_a'), (7002, 'Funil sem loja', null) on conflict (id) do update set unidade_id = excluded.unidade_id;
 insert into mkt.contas (id, nome, status_meta, unidade_id, marca) values ('55500555', 'CA Loja A', 1, 'atr_a', 'idealize') on conflict (id) do update set unidade_id = 'atr_a';
 insert into mkt.campanhas (id, conta_id, nome, status) values ('81000001', '55500555', '[MENSAGEM] Multifocal Campinas', 'ACTIVE'),
@@ -33,9 +34,9 @@ create function t.ep(n int) returns bigint language sql as $$ select floor(extra
 create function t.lote_atr(extra_vendas jsonb default '[]') returns jsonb language sql as $$
   select jsonb_build_object(
     'leads', jsonb_build_array(
-      jsonb_build_object('id', 1, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', t.h('A'), 'origem', null),                     -- compra nova
-      jsonb_build_object('id', 2, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', t.h('B'), 'origem', null),                     -- cliente antigo
-      jsonb_build_object('id', 3, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', t.h('C'), 'origem', 'utm_campaign=81000002'), -- campanha exata
+      jsonb_build_object('id', 1, 'funil_id', 7001, 'responsavel_id', 901, 'criado_em', t.ep(10), 'tel_hash', t.h('A'), 'origem', null),                     -- compra nova
+      jsonb_build_object('id', 2, 'funil_id', 7001, 'responsavel_id', 902, 'criado_em', t.ep(10), 'tel_hash', t.h('B'), 'origem', null),                     -- cliente antigo
+      jsonb_build_object('id', 3, 'funil_id', 7001, 'responsavel_id', 901, 'criado_em', t.ep(10), 'tel_hash', t.h('C'), 'origem', 'utm_campaign=81000002'), -- campanha exata
       jsonb_build_object('id', 4, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', t.h('D'), 'origem', null),                     -- comprou fora da janela
       jsonb_build_object('id', 5, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', null, 'origem', null),                         -- sem telefone
       jsonb_build_object('id', 6, 'funil_id', 7001, 'criado_em', t.ep(10), 'tel_hash', t.h('E'), 'origem', null),                     -- comprou em outra loja
@@ -108,6 +109,13 @@ select t.ok('painel','campanha com origem exata leva o lead dela + rateio dos se
   (select (x->>'exatos')::int = 1 and (x->>'leads')::numeric = 2.3 and (x->>'faturamento')::numeric = 300 + 1600 * 0.25
    from jsonb_array_elements(public.painel_atribuicao('atr_a')->'campanhas') x where x->>'campanha_id' = '81000002'),
   public.painel_atribuicao('atr_a')->>'campanhas');
+select t.ok('painel','por atendente: Ana com 2 leads, 2 vendas e R$ 1.300; Bia com 1 venda de cliente antigo (R$ 600); leads sem responsável à parte',
+  (select (x->>'leads')::int = 2 and (x->>'compraram')::int = 2 and (x->>'faturamento')::numeric = 1300 and (x->>'faturamento_novos')::numeric = 1300
+   from jsonb_array_elements(public.painel_atribuicao('atr_a')->'atendentes') x where x->>'nome' = 'Atendente Ana Atr')
+  and (select (x->>'faturamento')::numeric = 600 and (x->>'faturamento_novos')::numeric = 0
+   from jsonb_array_elements(public.painel_atribuicao('atr_a')->'atendentes') x where x->>'nome' = 'Atendente Bia Atr')
+  and (select (x->>'leads')::int = 4 from jsonb_array_elements(public.painel_atribuicao('atr_a')->'atendentes') x where x->'responsavel_id' = 'null'::jsonb),
+  public.painel_atribuicao('atr_a')->>'atendentes');
 select t.ok('painel','campanha de vagas não aparece', not exists (select 1 from jsonb_array_elements(public.painel_atribuicao('atr_a')->'campanhas') x where x->>'campanha_id' = '81000003'));
 reset role;
 select t.sem_jwt();

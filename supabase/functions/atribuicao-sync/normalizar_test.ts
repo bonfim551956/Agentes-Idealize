@@ -34,7 +34,7 @@ Deno.test("leitura dos leads: só GET, telefone sai como código, nada de telefo
   const pedidos: string[] = [];
   const buscar = async (c: string, p: [string, string][]) => {
     pedidos.push(c);
-    if (c === "leads") return { _embedded: { leads: [{ id: 10, pipeline_id: 7, created_at: 1792000000, _embedded: { contacts: [{ id: 5, is_main: true }] } },
+    if (c === "leads") return { _embedded: { leads: [{ id: 10, pipeline_id: 7, responsible_user_id: 901, created_at: 1792000000, _embedded: { contacts: [{ id: 5, is_main: true }] } },
       { id: 11, pipeline_id: 7, created_at: 1792000001, _embedded: { contacts: [] } }] } };
     if (c === "contacts") { igual(p.some(([k, v]) => k === "filter[id][]" && v === "5"), true);
       return { _embedded: { contacts: [{ id: 5, name: "Fulano", custom_fields_values: [{ field_code: "PHONE", values: [{ value: "(13) 99649-9669" }] }] }] } }; }
@@ -44,6 +44,7 @@ Deno.test("leitura dos leads: só GET, telefone sai como código, nada de telefo
   igual(r.length, 2);
   igual(/^[0-9a-f]{64}$/.test(String(r[0].tel_hash)), true);
   igual(r[1].tel_hash, null);
+  igual([r[0].responsavel_id, r[1].responsavel_id], [901, null]);
   igual(JSON.stringify(r).match(/Fulano|9649|99649/), null);
 });
 Deno.test("comparação de segredo", () => { igual(iguais("abc", "abc"), true); igual(iguais("abc", "abd"), false); });

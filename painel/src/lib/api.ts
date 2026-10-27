@@ -195,4 +195,6 @@ export type AtribuicaoPainel = {
     compraram_novos: number; faturamento: number; faturamento_novos: number }[];
   campanhas: { campanha_id: string; nome: string | null; unidade_id: string; investido: number; leads: number; compraram: number;
     faturamento: number; faturamento_novos: number; exatos: number }[];
+  atendentes: { responsavel_id: number | null; nome: string | null; unidades: string[] | null; leads: number; compraram: number;
+    compraram_novos: number; faturamento: number; faturamento_novos: number }[];
 };

@@ -60,7 +60,8 @@ export async function lerLeads(buscar: Buscar, desde: number, ate: number, chave
   for (const l of leads) {
     if (typeof l.id !== "number" || typeof l.created_at !== "number") continue;
     const cid = contatoPrincipal(l);
-    saida.push({ id: l.id, funil_id: l.pipeline_id ?? null, criado_em: l.created_at,
+    saida.push({ id: l.id, funil_id: l.pipeline_id ?? null,
+      responsavel_id: typeof l.responsible_user_id === "number" ? l.responsible_user_id : null, criado_em: l.created_at,
       tel_hash: cid != null && telefone.has(cid) ? await codigoTelefone(telefone.get(cid), chave) : null, origem: origemLead(l) });
   }
   telefone.clear();

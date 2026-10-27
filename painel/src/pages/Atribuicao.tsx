@@ -78,6 +78,27 @@ export function Atribuicao() {
               )}
             </Secao>
 
+            <Secao titulo="Por atendente" descricao="Responsável pelo lead na Kommo. Quem atende mais leads tende a faturar mais: compare também a conversão.">
+              {!a.atendentes.length ? <Vazio titulo="Ainda sem dados" /> : (
+                <Tabela rotulo="Retorno por atendente">
+                  <thead><tr><th className={th}>Atendente</th><th className={th}>Leads</th><th className={th}>Compraram</th><th className={th}>Conversão</th>
+                    <th className={th}>Faturado</th><th className={th}>De clientes novos</th><th className={th}>Ticket médio</th></tr></thead>
+                  <tbody>{a.atendentes.map((x) => (
+                    <tr key={x.responsavel_id ?? "sem"}>
+                      <td className={td}><span className={cx("font-bold", x.responsavel_id == null && "text-suave")}>{x.nome ?? "Sem responsável na Kommo"}</span>
+                        {x.unidades?.length ? <p className="text-xs text-suave">{x.unidades.map((u) => rotuloUnidade(u, eu.unidades)).join(", ")}</p> : null}</td>
+                      <td className={tdn}>{numero(x.leads)}</td>
+                      <td className={tdn}>{numero(x.compraram)}</td>
+                      <td className={cx(tdn, "font-bold")}>{pct(div(Number(x.compraram), Number(x.leads)))}</td>
+                      <td className={tdn}>{dinheiro(x.faturamento)}</td>
+                      <td className={tdn}>{dinheiro(x.faturamento_novos)}</td>
+                      <td className={tdn}>{x.compraram ? dinheiro(Number(x.faturamento) / Number(x.compraram)) : "sem dados"}</td>
+                    </tr>
+                  ))}</tbody>
+                </Tabela>
+              )}
+            </Secao>
+
             <Secao titulo="Por campanha" descricao="Quando o lead não diz de qual anúncio veio, ele é dividido entre as campanhas da loja que rodaram naquele dia, pelo gasto de cada uma.">
               {!a.campanhas.length ? <Vazio titulo="Sem campanhas com gasto no período" /> : (
                 <Tabela rotulo="Retorno por campanha">
