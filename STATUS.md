@@ -47,6 +47,7 @@
 - [x] Agente de Atribuição v0.1.0 — `20261027150000`, `atribuicao-sync` (Kommo só GET + ADM só leitura; telefone só como
       código HMAC), visão no ADM (`docs/adm/atribuicao_leitura.sql`), tela "Retorno das campanhas" (loja, atendente, campanha);
       instalado PAUSADO — `docs/evidencias/2026-10-27_agente_atribuicao.md`
+- [x] Chave do Asaas (São Vicente) testada só leitura e aceita; integração `asaas` = ok — `docs/evidencias/2026-10-27_teste_asaas.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
