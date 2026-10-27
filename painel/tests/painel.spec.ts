@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -238,6 +238,18 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("formas somam R$ 3.006,00")).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("caixa_nao_fechado");
     await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
+  });
+
+  test("cobranças mostra a carteira, o atraso e as divergências com o Asaas", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/cobrancas");
+    await expect(page.getByText(/Agente desligado/)).toBeVisible();
+    await expect(page.getByText("Sem chave do Asaas ainda", { exact: false })).toBeVisible();
+    await expect(page.getByText("Asaas: 2 parcelas, R$ 300,00 em atraso há 41 dias.")).toBeVisible();
+    await expect(page.getByText(/não corresponde a nenhuma parcela em aberto/)).toBeVisible();
+    await expect(page.getByText("R$ 3.493,64")).toBeVisible();
+    await page.getByLabel("Tipo de alerta").selectOption("parcela_vencida");
+    await expect(page.getByText(/não corresponde a nenhuma parcela/)).toHaveCount(0);
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

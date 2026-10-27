@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -49,6 +49,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/agentes", rotulo: "Agentes", icone: <Bot className={ic} /> },
       { para: "/financeiro", rotulo: "Financeiro por loja", icone: <Wallet className={ic} /> },
       { para: "/caixa", rotulo: "Caixa das lojas", icone: <Landmark className={ic} /> },
+      { para: "/cobrancas", rotulo: "Cobranças", icone: <HandCoins className={ic} /> },
       { para: "/laboratorio", rotulo: "Laboratório", icone: <FlaskConical className={ic} /> },
       { para: "/comercial", rotulo: "Comercial", icone: <MessagesSquare className={ic} /> },
       { para: "/marketing", rotulo: "Marketing", icone: <Megaphone className={ic} /> },

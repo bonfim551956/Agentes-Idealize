@@ -226,6 +226,23 @@ export const RPC: Record<string, unknown> = {
     ],
   },
   painel_marketing_conta_loja: null,
+  painel_cobrancas: {
+    hoje: "2026-10-26",
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null, asaas_lojas: [] },
+    carteira: [
+      { unidade_id: "sao_vicente", financeira: "asaas", a_vencer_30: 2100, a_vencer_total: 10341.63, vencido_1_30: 900, vencido_31_60: 868.33,
+        vencido_61_90: 0, vencido_90_mais: 0, parcelas_vencidas: 14, clientes_em_atraso: 9 },
+      { unidade_id: "sao_vicente", financeira: "multicredito", a_vencer_30: 5200, a_vencer_total: 41116.48, vencido_1_30: 1725.31, vencido_31_60: 0,
+        vencido_61_90: 0, vencido_90_mais: 0, parcelas_vencidas: 10, clientes_em_atraso: 7 },
+    ],
+    recebido_30d: [{ unidade_id: "sao_vicente", financeira: "asaas", valor: 1820, parcelas: 12 }],
+    alertas: [
+      { id: 1, tipo: "cobranca_sem_parcela", referencia: "asaas:pay_z", unidade_id: "sao_vicente", aberto_em: ha(60),
+        detalhe: { valor: 120, vencimento: "2026-11-05", status_asaas: "PENDING" } },
+      { id: 2, tipo: "parcela_vencida", referencia: "carne:A", unidade_id: "sao_vicente", aberto_em: ha(600),
+        detalhe: { os: "1234", financeira: "asaas", parcelas: 2, valor: 300, dias: 41 } },
+    ],
+  },
   painel_caixa: {
     periodo_dias: 7, desde: "2026-10-20", ate: "2026-10-26",
     sincronizacao: { ativa: false, agente: "pausado", ultima: null },

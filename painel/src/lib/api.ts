@@ -164,3 +164,12 @@ export type CaixaPainel = {
   dias: { unidade_id: string; dia: string; status_adm: string | null; caixa: number | null; soma_formas: number; deposito_valor: number | null }[];
   alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
 };
+
+export type CobrancasPainel = {
+  hoje: string;
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; parcelas: number; cobrancas_asaas: number; vinculos: number } | null; asaas_lojas: string[] };
+  carteira: { unidade_id: string; financeira: string; a_vencer_30: number; a_vencer_total: number; vencido_1_30: number; vencido_31_60: number;
+    vencido_61_90: number; vencido_90_mais: number; parcelas_vencidas: number; clientes_em_atraso: number }[];
+  recebido_30d: { unidade_id: string; financeira: string; valor: number; parcelas: number }[];
+  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
+};
