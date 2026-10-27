@@ -27,6 +27,6 @@ funções `lab.*` não expostas · anon sem `painel_lab` · auditoria íntegra.
 ## Para ligar (cada passo com PODE FAZER)
 1. [feito 26/10] Etapas confirmadas; "Aguardando lentes" parado após 4 dias. Coluna 8 segue sem nome.
 2. [feito 26/10, PODE FAZER] Visão sem dados pessoais + usuário só leitura criados no ADM, SEM senha (conferido: lê só a visão).
-3. Segredos no Idealize: `ADM_LEITURA_DB_URL` e `LAB_WORKER_SECRET`; agendar o `lab-sync` (ex.: a cada 15 min).
+3. [feito 26/10] Senha do usuário de leitura definida pelo Diego no ADM e segredo `ADM_LEITURA_DB_URL` salvo por ele no Idealize (não passou pelo assistente). Falta `LAB_WORKER_SECRET` e o agendamento do `lab-sync`.
 4. Ativar o agente no painel e `lab.sync.ativo = true`.
 5. Fase 2: conferência no portal WebPedidos da Braslab (navegador; precisa de login e de onde rodar o navegador).
