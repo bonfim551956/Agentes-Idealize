@@ -20,7 +20,7 @@ export async function lerRh(url: string): Promise<Obj> {
   const rh = postgres(url, { max: 1, prepare: false, idle_timeout: 5, connect_timeout: 10 });
   try {
     return await rh.begin("read only", async (t) => ({
-      vinculos: (await t`select vinculo_id, nome, loja, cargo, tipo, status, data_admissao, data_desligamento, jornada_semanal_horas, escala
+      vinculos: (await t`select vinculo_id, nome, loja, cargo, tipo, status, data_admissao, data_desligamento, jornada_semanal_horas, escala, aniversario
                          from idealize_ai.rh_vinculos`).map((x) => normalizar("vinculos", x as Obj)),
       ferias: (await t`select id, vinculo_id, inicio, fim, aquisitivo_inicio, aquisitivo_fim, programada from idealize_ai.rh_ferias`)
         .map((x) => normalizar("ferias", x as Obj)),

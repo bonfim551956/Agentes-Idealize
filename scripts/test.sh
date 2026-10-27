@@ -38,6 +38,10 @@ echo "→ testes do agente de atribuição"
 $P -f tests/98_atr.sql
 echo "→ testes do agente supervisor"
 $P -f tests/100_sup.sql
+echo "→ testes dos ajustes (Kommo tempo médio, RH admissão/aniversário)"
+$P -f tests/101_extras.sql
+echo "→ testes da central de envio de arquivos"
+$P -f tests/103_envios.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
@@ -58,3 +62,7 @@ echo "→ função de sincronização da atribuição (Deno)"
 (cd supabase/functions && deno test --allow-env atribuicao-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
 echo "→ função do agente supervisor (Deno)"
 (cd supabase/functions && deno test --allow-env supervisor-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ leitura dos arquivos enviados (Deno)"
+(cd supabase/functions && deno test --allow-env --allow-read fin-worker/envios_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ recebimento de arquivos do painel (Deno)"
+(cd supabase/functions && deno test --allow-env fin-envio/recebimento_test.ts 2>&1 | grep -E "passed|failed")

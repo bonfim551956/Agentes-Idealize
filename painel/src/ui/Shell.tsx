@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -42,6 +42,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/aprovacoes", rotulo: "Aprovações", icone: <ClipboardCheck className={ic} />, contagem: r?.aprovacoes_pendentes, urgente: true },
       { para: "/incidentes", rotulo: "Incidentes", icone: <ShieldAlert className={ic} />, contagem: incidentes, urgente: true },
       { para: "/pendencias", rotulo: "Pendências financeiras", icone: <AlertOctagon className={ic} />, contagem: r?.pendencias_fin.abertas },
+      { para: "/enviar", rotulo: "Enviar arquivos", icone: <FileUp className={ic} /> },
     ] },
     { titulo: "Acompanhar", itens: [
       { para: "/", rotulo: "Visão geral", icone: <Gauge className={ic} /> },

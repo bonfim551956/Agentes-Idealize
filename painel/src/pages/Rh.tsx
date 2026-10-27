@@ -8,22 +8,26 @@ import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabel
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   ferias_vencidas: { rotulo: "Férias fora do prazo", tom: "critico" },
-  experiencia_vencida: { rotulo: "Experiência passou de 90 dias", tom: "critico" },
+  experiencia_vencida: { rotulo: "Experiência passou do prazo", tom: "critico" },
   desligamento_prazo: { rotulo: "Prazo do acerto", tom: "critico" },
+  nova_admissao: { rotulo: "Nova admissão", tom: "lente" },
   fim_experiencia: { rotulo: "Fim de período de experiência", tom: "atencao" },
   exame_vencendo: { rotulo: "Exame ocupacional vencendo", tom: "atencao" },
   ferias_limite: { rotulo: "Férias perto do limite", tom: "atencao" },
   tarefa_atrasada: { rotulo: "Tarefa do RH atrasada", tom: "atencao" },
   jornada_irregular: { rotulo: "Jornada ou escala a corrigir", tom: "neutro" },
   uniforme_baixo: { rotulo: "Uniforme abaixo do mínimo", tom: "neutro" },
+  aniversario: { rotulo: "Aniversário", tom: "ok" },
 };
 const s = (v: unknown) => String(v ?? "");
 
 function texto(a: RhPainel["alertas"][number]): { titulo: string; detalhe: string } {
   const d = a.detalhe ?? {};
   switch (a.tipo) {
-    case "fim_experiencia": return { titulo: s(d.nome), detalhe: `${d.marco_dias === 45 ? "Primeiro período (45 dias)" : "Contrato de experiência (90 dias)"} termina em ${data(s(d.termina))}. Decida se prorroga, efetiva ou encerra.` };
-    case "experiencia_vencida": return { titulo: s(d.nome), detalhe: `A experiência terminou em ${data(s(d.terminou))} e o cadastro ainda está como experiência. Atualize o contrato no RH 360.` };
+    case "fim_experiencia": return { titulo: s(d.nome), detalhe: d.periodo === 1
+      ? `Primeiro período (${s(d.marco_dias)} dias) termina em ${data(s(d.termina))}. Decida se prorroga ou encerra.`
+      : `Prorrogação termina em ${data(s(d.termina))} (${s(d.marco_dias)} dias de experiência). Decida se efetiva ou encerra.` };
+    case "experiencia_vencida": return { titulo: s(d.nome), detalhe: `A experiência${d.total_dias ? ` de ${s(d.total_dias)} dias` : ""} terminou em ${data(s(d.terminou))} e o cadastro ainda está como experiência. Atualize o contrato no RH 360.` };
     case "ferias_vencidas": return d.dias_fora_do_prazo
       ? { titulo: s(d.nome), detalhe: `${s(d.dias_fora_do_prazo)} dias de férias do período ${data(s(d.aquisitivo_inicio))} a ${data(s(d.aquisitivo_fim))} foram tirados depois do limite (${data(s(d.limite))}). Confira com a contabilidade se houve pagamento em dobro.` }
       : { titulo: s(d.nome), detalhe: `Período ${data(s(d.aquisitivo_inicio))} a ${data(s(d.aquisitivo_fim))}: faltam ${s(d.dias_faltando)} dias e o limite era ${data(s(d.limite))}. Risco de pagamento em dobro.` };
@@ -32,6 +36,10 @@ function texto(a: RhPainel["alertas"][number]): { titulo: string; detalhe: strin
     case "desligamento_prazo": return { titulo: s(d.nome), detalhe: `Desligamento em ${data(s(d.desligamento))}; o acerto precisa estar pago até ${data(s(d.prazo_acerto))}.` };
     case "tarefa_atrasada": return { titulo: s(d.titulo), detalhe: `Prazo era ${data(s(d.prazo))}.` };
     case "jornada_irregular": return { titulo: s(d.nome), detalhe: d.motivo === "acima" ? `Jornada cadastrada de ${s(d.jornada)} horas semanais, acima de 44.` : d.motivo === "sem_jornada" ? "Sem jornada semanal cadastrada." : "Sem escala de horário cadastrada." };
+    case "nova_admissao": return { titulo: s(d.nome), detalhe: d.pre_admissao
+      ? `Em pré-admissão${d.admissao ? `, começa em ${data(s(d.admissao))}` : ""}. Confira documentos, exame admissional e o envio à contabilidade.`
+      : `${s(d.cargo) || "Admissão"} em ${data(s(d.admissao))}. Confira documentos, exame admissional e o envio à contabilidade.` };
+    case "aniversario": return { titulo: s(d.nome), detalhe: d.hoje ? `Faz aniversário hoje (${s(d.dia)}).` : `Faz aniversário em ${s(d.dia)}.` };
     case "uniforme_baixo": return { titulo: `${s(d.peca)} ${s(d.tamanho)}`, detalhe: `${s(d.saldo)} em estoque; mínimo de ${s(d.minimo)}.` };
     default: return { titulo: a.referencia, detalhe: "" };
   }

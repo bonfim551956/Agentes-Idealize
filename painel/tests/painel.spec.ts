@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -198,6 +198,9 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText(/Agente desligado: os números abaixo são da última leitura, e ainda não houve nenhuma/)).toBeVisible();
     await expect(page.getByText(/Última mensagem do cliente há 50 min \(limite 30 min\)/)).toBeVisible();
     await expect(page.getByRole("cell", { name: "Atendente Bia" })).toBeVisible();
+    const bia = page.getByRole("row", { name: /Atendente Bia/ });
+    await expect(bia.getByRole("cell", { name: "58 min" })).toBeVisible();
+    await expect(page.getByText(/conta só o horário de atendimento \(09:00 às 19:00\)/)).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("lead_parado");
     await expect(page.getByText(/Última mensagem do cliente/)).toHaveCount(0);
     await page.getByLabel("Loja do funil Funil Sorocaba").selectOption("campinas");
@@ -257,8 +260,10 @@ test.describe("estados e permissões", () => {
     await page.goto("/rh");
     await expect(page.getByText(/Agente desligado/)).toBeVisible();
     await expect(page.getByText(/foram tirados depois do limite \(31\/10\/2025\)/)).toBeVisible();
-    await expect(page.getByText("Primeiro período (45 dias) termina em 31/10/2026. Decida se prorroga, efetiva ou encerra.")).toBeVisible();
+    await expect(page.getByText("Primeiro período (15 dias) termina em 31/10/2026. Decida se prorroga ou encerra.")).toBeVisible();
     await expect(page.getByText("Estoque central")).toBeVisible();
+    await expect(page.getByText("Em pré-admissão, começa em 30/10/2026. Confira documentos, exame admissional e o envio à contabilidade.")).toBeVisible();
+    await expect(page.getByText("Faz aniversário em 29/10.")).toBeVisible();
     await expect(page.getByText("Salário a partir de 01/10/2026", { exact: false })).toBeVisible();
     await page.getByLabel("Mês da lista para a contabilidade").fill("2026-09");
     await expect.poll(() => chamadas.filter((c) => c.fn === "painel_rh").at(-1)?.corpo).toEqual({ p_unidade: null, p_mes: "2026-09-01" });
@@ -290,6 +295,29 @@ test.describe("estados e permissões", () => {
     await expect(page.getByRole("row", { name: /Agente de RH/ }).getByText("Desligado")).toBeVisible();
     await expect(page.getByText("Não enviado (modo sombra)")).toBeVisible();
     await expect(page.getByText(/Prévia do próximo resumo/)).toBeVisible();
+  });
+
+  test("enviar arquivos: cobra o que falta, envia, confere a fatura com categoria e cartão e lança", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/enviar");
+    await expect(page.getByText(/Leitura desligada/)).toBeVisible();
+    await expect(page.getByText("Relatório da Stone (São Vicente): falta o da semana (prazo 27/10 10h)")).toBeVisible();
+    await page.getByLabel("Loja").selectOption("sao_vicente");
+    await page.getByLabel("O que é").selectOption("stone");
+    await page.locator("#env-arquivos").setInputFiles({ name: "stone_semana.csv", mimeType: "text/csv", buffer: Buffer.from("data;valor\n2026-10-20;100") });
+    await page.getByRole("button", { name: "Enviar", exact: true }).click();
+    await expect(page.getByText("stone_semana.csv:")).toBeVisible();
+    await expect.poll(() => chamadas.some((c) => c.fn === "fin-envio")).toBe(true);
+    await expect(page.getByText(/As contas fecham: 3 linha\(s\)/)).toBeVisible();
+    await expect(page.getByText("não é compra")).toBeVisible();
+    await page.getByLabel("Categoria de POSTO SHELL").selectOption("combustivel");
+    const lancar = page.getByRole("button", { name: "Conferi, pode lançar" });
+    await expect(lancar).toBeDisabled();
+    await page.getByLabel("Cartão desta fatura").selectOption("sv_cartao");
+    await lancar.click();
+    await page.getByRole("dialog").getByRole("button", { name: "Lançar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_envio_confirmar")?.corpo).toEqual(
+      { p_id: "e1", p_conta: "sv_cartao", p_categorias: { "1": "combustivel" } });
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

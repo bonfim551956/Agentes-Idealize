@@ -139,20 +139,22 @@ export function Comercial() {
               )}
             </Secao>
 
-            <Secao titulo="Tempo de resposta" descricao={`Da mensagem do cliente até a primeira resposta da atendente. Meta: até ${c.limite_resposta_min} min.`}>
-              <dl className="mb-4 grid grid-cols-3 gap-6 sm:max-w-xl">
+            <Secao titulo="Tempo de resposta" descricao={`Da mensagem do cliente até a primeira resposta da atendente. Meta: até ${c.limite_resposta_min} min. O tempo médio conta só o horário de atendimento (${c.horario_atendimento.replace("-", " às ")}), para a mensagem da madrugada não inflar a conta.`}>
+              <dl className="mb-4 grid grid-cols-2 gap-6 sm:max-w-2xl sm:grid-cols-4">
                 <div><dt className="text-xs text-suave">Conversas respondidas</dt><dd className="text-lg font-bold">{numero(c.resposta_geral.respondidas)}</dd></div>
+                <div><dt className="text-xs text-suave">Tempo médio</dt><dd className="text-lg font-bold">{minutos(c.resposta_geral.media_min)}</dd></div>
                 <div><dt className="text-xs text-suave">Tempo típico (mediana)</dt><dd className="text-lg font-bold">{minutos(c.resposta_geral.mediana_min)}</dd></div>
                 <div><dt className="text-xs text-suave">Dentro da meta</dt>
                   <dd className="text-lg font-bold">{c.resposta_geral.no_limite_pct == null ? "sem dados" : `${numero(c.resposta_geral.no_limite_pct)}%`}</dd></div>
               </dl>
               {!c.atendentes.length ? <Vazio titulo="Ainda sem respostas no período" icone={<MessagesSquare className="h-6 w-6" />} /> : (
                 <Tabela rotulo="Tempo de resposta por atendente">
-                  <thead><tr><th className={th}>Atendente</th><th className={th}>Respondidas</th><th className={th}>Tempo típico</th><th className={th}>Dentro da meta</th><th className={th}>Vendas ganhas</th></tr></thead>
+                  <thead><tr><th className={th}>Atendente</th><th className={th}>Respondidas</th><th className={th}>Tempo médio</th><th className={th}>Tempo típico</th><th className={th}>Dentro da meta</th><th className={th}>Vendas ganhas</th></tr></thead>
                   <tbody>{c.atendentes.map((a) => (
                     <tr key={a.id}>
                       <td className={td}><span className="font-bold">{a.nome}</span></td>
                       <td className={tdn}>{numero(a.respondidas)}</td>
+                      <td className={cx(tdn, (a.media_min ?? 0) > c.limite_resposta_min && "font-bold text-atencao")}>{minutos(a.media_min)}</td>
                       <td className={cx(tdn, (a.mediana_min ?? 0) > c.limite_resposta_min && "font-bold text-atencao")}>{minutos(a.mediana_min)}</td>
                       <td className={tdn}>{a.no_limite_pct == null ? "sem dados" : `${numero(a.no_limite_pct)}%`}</td>
                       <td className={tdn}>{numero(a.ganhos)}</td>

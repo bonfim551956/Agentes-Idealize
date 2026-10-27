@@ -134,8 +134,9 @@ export type ComercialPainel = {
   periodo_dias: number; limite_resposta_min: number;
   sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; ate: string; leads: number; mensagens_novas: number } | null };
   lojas: { id: string; nome: string; leads_novos: number; ganhos: number; perdidos: number; valor_ganho: number; em_aberto: number }[];
-  atendentes: { id: number; nome: string; respondidas: number; mediana_min: number | null; no_limite_pct: number | null; ganhos: number }[];
-  resposta_geral: { respondidas: number; mediana_min: number | null; no_limite_pct: number | null };
+  atendentes: { id: number; nome: string; respondidas: number; mediana_min: number | null; media_min: number | null; no_limite_pct: number | null; ganhos: number }[];
+  resposta_geral: { respondidas: number; mediana_min: number | null; media_min: number | null; no_limite_pct: number | null };
+  horario_atendimento: string; dias_atendimento: string;
   alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; responsavel: string | null; aberto_em: string;
     detalhe: Record<string, unknown> | null }[];
   funis: { id: number; nome: string; unidade_id: string | null }[] | null;
@@ -209,4 +210,22 @@ export type SupervisorPainel = {
   resolvidos: { id: number; tipo: string; severidade: string; titulo: string; aberto_em: string; resolvido_em: string }[];
   mensagens: { id: number; tipo: "urgente" | "resumo"; status: string; texto: string; criada_em: string; enviada_em: string | null; erro: string | null }[];
   previa: string;
+};
+
+export type EnvioLeitura = {
+  tipo: string; formato: "ofx" | "ia"; saldo_inicial?: number | null; saldo_final?: number | null; total?: number | null; total_bruto?: number | null;
+  linhas?: { data: string | null; valor: number | null; descricao: string }[];
+  compras?: { data: string | null; descricao: string; valor: number | null; parcela?: string | null; categoria?: string | null }[];
+  transacoes?: { data: string | null; forma: string | null; valor: number | null }[];
+  itens?: { valor: number | null; data?: string | null; vencimento?: string | null; favorecido?: string | null }[];
+};
+export type EnviosPainel = {
+  leitura_ligada: boolean; max_mb: number;
+  contas: { id: string; apelido: string; tipo: string; unidade_id: string; instituicao: string | null; final: string | null }[];
+  envios: { id: string; unidade_id: string; conta_id: string | null; tipo_declarado: string; tipo: string | null; nome_arquivo: string; tamanho: number;
+    status: string; formato: string | null; checagens: { ok: boolean | null; itens: number; soma: number; esperado: number | null; avisos: string[] } | null;
+    leitura: EnvioLeitura | null; resultado: Record<string, unknown> | null; motivo: string | null; criado_em: string; decidido_em: string | null;
+    enviado_por: string | null; pode_confirmar: boolean }[];
+  faltando: { esperado_id: number; unidade_id: string; tipo: string; conta_id: string | null; descricao: string; prazo: string }[];
+  categorias: { id: string; nome: string }[];
 };

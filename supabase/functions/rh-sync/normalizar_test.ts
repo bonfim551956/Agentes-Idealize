@@ -5,10 +5,10 @@ const igual = (a: unknown, b: unknown) => { if (JSON.stringify(a) !== JSON.strin
 
 Deno.test("vínculo: só campos da lista; CPF, salário e endereço descartados", () => {
   const v = normalizar("vinculos", { vinculo_id: "abc", nome: "ANA", loja: "CAMPINAS", tipo: "clt_experiencia", status: "ativo",
-    data_admissao: new Date("2026-09-17T00:00:00Z"), jornada_semanal_horas: "44", cpf: "12345678900", salario_base: 3000, logradouro: "RUA X" });
-  igual(Object.keys(v).sort(), ["cargo","data_admissao","data_desligamento","escala","jornada_semanal_horas","loja","nome","status","tipo","vinculo_id"]);
+    data_admissao: new Date("2026-09-17T00:00:00Z"), jornada_semanal_horas: "44", cpf: "12345678900", salario_base: 3000, logradouro: "RUA X", data_nascimento: "1990-03-15" });
+  igual(Object.keys(v).sort(), ["aniversario","cargo","data_admissao","data_desligamento","escala","jornada_semanal_horas","loja","nome","status","tipo","vinculo_id"]);
   igual([v.data_admissao, v.jornada_semanal_horas], ["2026-09-17", 44]);
-  igual(JSON.stringify(v).match(/12345678900|3000|RUA X/), null);
+  igual(JSON.stringify(v).match(/12345678900|3000|RUA X|1990/), null);
 });
 Deno.test("documento: só categoria, vencimento e situação (nenhum conteúdo)", () => {
   igual(Object.keys(normalizar("documentos", { id: "d1", vinculo_id: "v", categoria: "exames_ocupacionais", vencimento: "2026-12-01",
@@ -19,3 +19,7 @@ Deno.test("férias: datas e marcação de programada", () => {
   igual([f.inicio, f.fim, f.programada], ["2026-11-02", "2026-11-11", true]);
 });
 Deno.test("comparação de segredo", () => { igual(iguais("abc", "abc"), true); igual(iguais("abc", "abd"), false); });
+Deno.test("aniversário: só dia e mês no formato MM-DD; data completa ou lixo vira nulo", () => {
+  const n = (v: unknown) => normalizar("vinculos", { vinculo_id: "1", nome: "X", tipo: "clt", status: "ativo", aniversario: v }).aniversario;
+  if (n("03-15") !== "03-15" || n("1990-03-15") !== null || n("13-01") !== null || n(null) !== null) throw new Error("aniversário mal normalizado");
+});

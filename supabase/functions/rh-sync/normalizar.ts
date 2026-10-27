@@ -9,9 +9,9 @@ const dia = (v: unknown): string | null => {
 const texto = (v: unknown, max = 120): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : v == null ? null : String(v).slice(0, max));
 const num = (v: unknown): number | null => { const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN; return Number.isFinite(n) ? n : null; };
 
-const CAMPOS: Record<string, Record<string, "texto" | "dia" | "num" | "logico" | "instante">> = {
+const CAMPOS: Record<string, Record<string, "texto" | "dia" | "num" | "logico" | "instante" | "mmdd">> = {
   vinculos: { vinculo_id: "texto", nome: "texto", loja: "texto", cargo: "texto", tipo: "texto", status: "texto", data_admissao: "dia",
-    data_desligamento: "dia", jornada_semanal_horas: "num", escala: "texto" },
+    data_desligamento: "dia", jornada_semanal_horas: "num", escala: "texto", aniversario: "mmdd" },
   ferias: { id: "texto", vinculo_id: "texto", inicio: "dia", fim: "dia", aquisitivo_inicio: "dia", aquisitivo_fim: "dia", programada: "logico" },
   desligamentos: { id: "texto", vinculo_id: "texto", modalidade: "texto", data_comunicacao: "dia", data_desligamento: "dia", status: "texto", concluido_em: "instante" },
   tarefas: { id: "texto", titulo: "texto", categoria: "texto", loja: "texto", prazo: "dia", prioridade: "texto", status: "texto" },
@@ -24,7 +24,8 @@ export function normalizar(tipo: keyof typeof CAMPOS, l: Obj): Obj {
   const o: Obj = {};
   for (const [k, t] of Object.entries(CAMPOS[tipo])) {
     const v = l[k];
-    o[k] = t === "dia" ? dia(v) : t === "num" ? num(v) : t === "logico" ? v === true
+    o[k] = t === "mmdd" ? (typeof v === "string" && /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v) ? v : null)
+      : t === "dia" ? dia(v) : t === "num" ? num(v) : t === "logico" ? v === true
       : t === "instante" ? (v instanceof Date ? v.toISOString() : texto(v, 40)) : texto(v, k === "titulo" ? 200 : 120);
   }
   return o;

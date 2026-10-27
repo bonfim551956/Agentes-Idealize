@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Idealize RH 360 — visões de LEITURA para o agente de RH da Idealize AI.
 -- Só aplicar com "PODE FAZER" do Diego. Não altera nenhuma tabela existente.
--- Entregam nome, loja, cargo, datas e situação. NUNCA: CPF, nascimento, endereço, telefone, e-mail, contato de
+-- Entregam nome, loja, cargo, datas e situação. NUNCA: CPF, ano de nascimento (só dia/mês, para aniversário), endereço, telefone, e-mail, contato de
 -- emergência, salário, conteúdo de documento (inclusive de saúde) ou motivo de desligamento/advertência.
 -- Usuário próprio, só leitura, sem senha até o Diego definir (segredo RH_LEITURA_DB_URL no projeto Idealize).
 -- =============================================================================
@@ -11,7 +11,8 @@ revoke all on schema idealize_ai from public;
 -- Vínculo atual de cada pessoa: loja (lotação aberta), cargo, tipo de contrato, situação, jornada e escala
 create or replace view idealize_ai.rh_vinculos with (security_barrier = true) as
 select v.id as vinculo_id, c.nome_completo as nome, l.codigo as loja, cg.nome as cargo, v.tipo::text as tipo, v.status::text as status,
-       v.data_admissao, v.data_desligamento, v.jornada_semanal_horas, v.escala
+       v.data_admissao, v.data_desligamento, v.jornada_semanal_horas, v.escala,
+       to_char(c.data_nascimento, 'MM-DD') as aniversario   -- só dia e mês, para o aviso de aniversário; o ano não sai
 from public.vinculos v
 join public.colaboradores c on c.id = v.colaborador_id
 left join lateral (select lo.loja_id from public.lotacoes lo where lo.vinculo_id = v.id and lo.fim is null order by lo.inicio desc limit 1) la on true

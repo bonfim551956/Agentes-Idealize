@@ -183,10 +183,11 @@ export const RPC: Record<string, unknown> = {
       { id: "_sem_loja", nome: "Funis sem loja definida", leads_novos: 12, ganhos: 2, perdidos: 1, valor_ganho: 1200, em_aberto: 7 },
     ],
     atendentes: [
-      { id: 7, nome: "Atendente Ana", respondidas: 120, mediana_min: 12.5, no_limite_pct: 81.2, ganhos: 11 },
-      { id: 8, nome: "Atendente Bia", respondidas: 64, mediana_min: 47, no_limite_pct: 40, ganhos: 4 },
+      { id: 7, nome: "Atendente Ana", respondidas: 120, mediana_min: 12.5, media_min: 21.4, no_limite_pct: 81.2, ganhos: 11 },
+      { id: 8, nome: "Atendente Bia", respondidas: 64, mediana_min: 47, media_min: 58, no_limite_pct: 40, ganhos: 4 },
     ],
-    resposta_geral: { respondidas: 184, mediana_min: 18, no_limite_pct: 67.4 },
+    resposta_geral: { respondidas: 184, mediana_min: 18, media_min: 33.9, no_limite_pct: 67.4 },
+    horario_atendimento: "09:00-19:00", dias_atendimento: "1,2,3,4,5,6",
     alertas: [
       { id: 1, tipo: "cliente_sem_resposta", referencia: "lead:100", unidade_id: "campinas", responsavel: "Atendente Bia", aberto_em: ha(1),
         detalhe: { desde: new Date(Date.now() - 50 * 60000).toISOString(), minutos: 50, limite_min: 30 } },
@@ -238,6 +239,27 @@ export const RPC: Record<string, unknown> = {
       { responsavel_id: null, nome: null, unidades: ["campinas"], leads: 40, compraram: 2, compraram_novos: 2, faturamento: 1600, faturamento_novos: 1600 },
     ],
   },
+  painel_envios: {
+    leitura_ligada: false, max_mb: 20,
+    contas: [{ id: "sv_sicredi", apelido: "Sicredi SV", tipo: "corrente", unidade_id: "sao_vicente", instituicao: "sicredi", final: "74992" },
+      { id: "sv_cartao", apelido: "Cartão Sicredi", tipo: "cartao_credito", unidade_id: "sao_vicente", instituicao: "sicredi", final: "1234" }],
+    envios: [
+      { id: "e1", unidade_id: "sao_vicente", conta_id: null, tipo_declarado: "fatura", tipo: "fatura", nome_arquivo: "fatura_outubro.pdf", tamanho: 90000,
+        status: "conferir", formato: "ia", checagens: { ok: true, itens: 3, soma: 4165.55, esperado: 4165.55, avisos: [] },
+        leitura: { tipo: "fatura", formato: "ia", total: 4165.55, compras: [
+          { data: "2026-10-02", descricao: "POSTO SHELL", valor: 300, parcela: null, categoria: null },
+          { data: "2026-10-05", descricao: "FORNECEDOR LENTES", valor: 3900.55, parcela: "1/3", categoria: "laboratorio" },
+          { data: "2026-10-09", descricao: "ESTORNO", valor: -35, parcela: null, categoria: null }] },
+        resultado: null, motivo: null, criado_em: ha(30), decidido_em: null, enviado_por: "Diego", pode_confirmar: true },
+      { id: "e2", unidade_id: "sao_vicente", conta_id: "sv_sicredi", tipo_declarado: "extrato", tipo: "extrato", nome_arquivo: "extrato_26-10.ofx", tamanho: 4000,
+        status: "lancado", formato: "ofx", checagens: { ok: null, itens: 12, soma: 820, esperado: null, avisos: [] }, leitura: null,
+        resultado: { novas: 12 }, motivo: null, criado_em: ha(300), decidido_em: ha(299), enviado_por: "Rafael", pode_confirmar: true },
+    ],
+    faltando: [{ esperado_id: 1, unidade_id: "sao_vicente", tipo: "stone", conta_id: null, descricao: "Relatório da Stone (São Vicente): falta o da semana (prazo 27/10 10h)", prazo: ha(60) }],
+    categorias: [{ id: "laboratorio", nome: "Laboratórios" }, { id: "combustivel", nome: "Combustível" }],
+  },
+  painel_envio_confirmar: { status: "lancado", resultado: { compras: 2, sem_categoria: 0 } },
+  painel_envio_descartar: null,
   painel_supervisor: {
     config: { ativo: false, agente: "pausado", enviar: false, destinos: 1, horarios: "7,12,18", modo_seguro: false, auto_modo_seguro: true },
     ultima: { em: ha(20), abertos: 2, novos: 1, resolvidos: 1, auditoria_ok: true },
@@ -263,8 +285,12 @@ export const RPC: Record<string, unknown> = {
     alertas: [
       { id: 1, tipo: "ferias_vencidas", referencia: "vinculo:a:2023-11-01:fora", unidade_id: "sao_vicente", prazo: "2025-10-31", aberto_em: ha(60),
         detalhe: { nome: "COLABORADORA TESTE", aquisitivo_inicio: "2023-11-01", aquisitivo_fim: "2024-10-31", limite: "2025-10-31", dias_fora_do_prazo: 30 } },
-      { id: 2, tipo: "fim_experiencia", referencia: "vinculo:b:45", unidade_id: "sao_vicente", prazo: "2026-10-31", aberto_em: ha(60),
-        detalhe: { nome: "CONSULTOR NOVO", marco_dias: 45, termina: "2026-10-31" } },
+      { id: 2, tipo: "fim_experiencia", referencia: "vinculo:b:15", unidade_id: "sao_vicente", prazo: "2026-10-31", aberto_em: ha(60),
+        detalhe: { nome: "CONSULTOR NOVO", marco_dias: 15, periodo: 1, total_dias: 45, termina: "2026-10-31" } },
+      { id: 4, tipo: "nova_admissao", referencia: "vinculo:c", unidade_id: "sao_vicente", prazo: "2026-10-30", aberto_em: ha(60),
+        detalhe: { nome: "PESSOA NOVA", cargo: "CONSULTOR DE VENDAS", admissao: "2026-10-30", pre_admissao: true } },
+      { id: 5, tipo: "aniversario", referencia: "vinculo:d:2026", unidade_id: "sao_vicente", prazo: "2026-10-29", aberto_em: ha(60),
+        detalhe: { nome: "ANIVERSARIANTE TESTE", dia: "29/10", hoje: false } },
       { id: 3, tipo: "uniforme_baixo", referencia: "uniforme:u", unidade_id: null, prazo: null, aberto_em: ha(60),
         detalhe: { peca: "POLO FEMININO", tamanho: "M", saldo: 3, minimo: 12 } },
     ],
@@ -357,6 +383,10 @@ export async function instalar(page: Page, o: Opcoes = {}) {
       if (corpo.code !== "123456") return json(r, { code: "mfa_verification_failed", msg: "Invalid TOTP code entered", error_code: "mfa_verification_failed" }, 422);
       nivel = "aal2";
       return json(r, sessao("aal2", true));
+    }
+    if (p === "/functions/v1/fin-envio") {
+      chamadas.push({ fn: "fin-envio", corpo: { tamanho: r.request().postDataBuffer()?.length ?? 0 } });
+      return json(r, { duplicado: false, id: "novo", status: "recebido" });
     }
     const m = p.match(/^\/rest\/v1\/rpc\/(painel_[a-z_]+)$/);
     if (m) {

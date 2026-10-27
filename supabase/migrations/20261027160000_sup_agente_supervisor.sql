@@ -403,6 +403,22 @@ begin
   from (select distinct on (agente_id) * from sup.amostras where em > now() - interval '48 hours' order by agente_id, em desc, id desc) m
   where m.erro is not null;
 
+  -- 12. arquivo que devia ter chegado e não chegou (extrato diário, Stone semanal, fatura mensal) — vai no resumo
+  insert into _sup_atual
+  select 'arquivo_faltando', f.esperado_id || ':' || to_char(f.prazo at time zone 'America/Sao_Paulo', 'YYYYMMDDHH24'), 'financeiro', 'media',
+         f.descricao, jsonb_build_object('unidade', f.unidade_id, 'tipo', f.tipo, 'prazo', f.prazo)
+  from fin.arquivos_faltando() f;
+
+  -- 13. arquivos enviados esperando alguém conferir há mais de 1 dia, ou que deram erro na leitura
+  insert into _sup_atual
+  select 'envio_parado', x.status, 'financeiro', 'media',
+         x.n || case x.status when 'conferir' then ' arquivo(s) enviado(s) esperando conferência há mais de 1 dia'
+                              else ' arquivo(s) enviado(s) que não consegui ler' end,
+         jsonb_build_object('quantos', x.n)
+  from (select status, count(*)::int n from fin.envios
+        where (status = 'conferir' and atualizado_em < now() - interval '1 day') or (status = 'erro' and atualizado_em > now() - interval '3 days')
+        group by status) x;
+
   -- 11. modo seguro ligado (tudo parado, menos monitoramento)
   insert into _sup_atual
   select 'modo_seguro', 'plataforma', null, 'alta', 'Modo seguro ligado: os agentes estão parados', null

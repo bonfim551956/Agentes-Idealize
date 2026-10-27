@@ -23,6 +23,7 @@ import { Cobrancas } from "./pages/Cobrancas";
 import { Rh } from "./pages/Rh";
 import { Atribuicao } from "./pages/Atribuicao";
 import { Supervisor } from "./pages/Supervisor";
+import { Enviar } from "./pages/Enviar";
 
 const cliente = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ function Rotas() {
         <Route path="/rh" element={<Rh />} />
         <Route path="/retorno" element={<Atribuicao />} />
         <Route path="/supervisor" element={<Supervisor />} />
+        <Route path="/enviar" element={<Enviar />} />
         <Route path="/custos" element={<Custos />} />
         {eu.pode.auditoria && <Route path="/auditoria" element={<Auditoria />} />}
         <Route path="/operacao" element={<Operacao />} />

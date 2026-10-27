@@ -47,6 +47,8 @@
 - [x] Agente de Atribuição v0.1.0 — `20261027150000`, `atribuicao-sync` (Kommo só GET + ADM só leitura; telefone só como
       código HMAC), visão no ADM (`docs/adm/atribuicao_leitura.sql`), tela "Retorno das campanhas" (loja, atendente, campanha);
       instalado PAUSADO — `docs/evidencias/2026-10-27_agente_atribuicao.md`
+- [ ] Central de envio de arquivos v0.1.0 — `20261027155000`, `fin-envio` (recebe do painel), leitura no `fin-worker`, tela /enviar; OFX entra sozinho, PDF/foto/planilha ficam para conferir; arquivos esperados cobrados pelo Supervisor; testado; instalação pendente
+- [ ] Kommo tempo médio (horário de atendimento) — `20261027170000`; RH nova admissão, aniversário (só dia/mês) e experiência 15+15 / consultor óptico 15+30 — `20261027180000` + `docs/rh360/rh_leitura_aniversario.sql`; testado; instalação pendente
 - [ ] Agente Supervisor v0.1.0 — `20261027160000`, `supervisor-sync`, tela /supervisor; testado (623 SQL, 7 Deno, 27 painel); instalação no Supabase pendente — `docs/evidencias/2026-10-27_agente_supervisor.md`
 - [x] Chave do Asaas (São Vicente) testada só leitura e aceita; integração `asaas` = ok — `docs/evidencias/2026-10-27_teste_asaas.md`
 

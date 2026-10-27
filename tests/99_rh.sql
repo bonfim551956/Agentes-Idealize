@@ -26,7 +26,7 @@ create function t.lote_rh(ferias_v3 boolean default false, desligamento_concluid
   saldo_uniforme int default 2) returns jsonb language sql as $$
   select jsonb_build_object(
     'vinculos', jsonb_build_array(
-      t.vin('v1','ANA EXPERIENCIA','CAMPINAS','clt_experiencia','ativo', t.rd(-40)),
+      t.vin('v1','ANA EXPERIENCIA','CAMPINAS','clt_experiencia','ativo', t.rd(-26)),
       t.vin('v2','BIA EXPERIENCIA VENCIDA','CAMPINAS','clt_experiencia','ativo', t.rd(-95)),
       t.vin('v3','CAIO FERIAS VENCIDAS','CAMPINAS','clt_prazo_indeterminado','ativo', t.anos(2, -30)),
       t.vin('v4','DUDA FERIAS PERTO','SOROCABA','clt_prazo_indeterminado','ativo', t.anos(2, 64)),
@@ -64,9 +64,9 @@ select t.ok('sync','9 vínculos lidos; férias de 200 dias descartada', (current
   and (current_setting('t.r1')::jsonb->>'ferias')::int = 1, current_setting('t.r1'));
 select t.ok('sync','validador independente aprovou', current_setting('t.r1')::jsonb->>'validacao' = 'concluida');
 select t.ok('privacidade','CPF e salário do lote não foram gravados', not exists (select 1 from rh.vinculos where row_to_json(vinculos.*)::text ~ '(12345678900|3000)'));
-select t.ok('alertas','experiência: 1º período (45 dias) termina em 4 dias', exists (select 1 from rh.alertas where tipo = 'fim_experiencia'
-  and referencia = 'vinculo:v1:45' and prazo = t.rd(4) and status = 'aberto'));
-select t.ok('alertas','experiência passou dos 90 dias sem efetivação registrada', exists (select 1 from rh.alertas where tipo = 'experiencia_vencida' and referencia = 'vinculo:v2'));
+select t.ok('alertas','experiência 15+15: prorrogação (30 dias) termina em 3 dias', exists (select 1 from rh.alertas where tipo = 'fim_experiencia'
+  and referencia = 'vinculo:v1:30' and prazo = t.rd(3) and status = 'aberto'));
+select t.ok('alertas','experiência passou do prazo sem efetivação registrada', exists (select 1 from rh.alertas where tipo = 'experiencia_vencida' and referencia = 'vinculo:v2'));
 select t.ok('alertas','férias do 1º período não tiradas e limite passado: risco de pagar em dobro',
   exists (select 1 from rh.alertas where tipo = 'ferias_vencidas' and referencia = 'vinculo:v3:' || t.anos(2,-30) and (detalhe->>'dias_faltando')::int = 30));
 select t.ok('alertas','férias com limite em 64 dias e 20 dias faltando', exists (select 1 from rh.alertas where tipo = 'ferias_limite'
@@ -79,7 +79,8 @@ select t.ok('alertas','jornada de 48h e escala vazia',
   and exists (select 1 from rh.alertas where tipo = 'jornada_irregular' and referencia = 'vinculo:v6' and detalhe->>'motivo' = 'sem_escala'));
 select t.ok('alertas','uniforme abaixo do mínimo', exists (select 1 from rh.alertas where tipo = 'uniforme_baixo' and referencia = 'uniforme:u1'));
 select t.ok('alertas','quem está em pré-admissão ou desligado não gera aviso de experiência/jornada',
-  not exists (select 1 from rh.alertas where referencia like 'vinculo:v8%' or referencia like 'vinculo:v7%'));
+  not exists (select 1 from rh.alertas where (referencia like 'vinculo:v8%' or referencia like 'vinculo:v7%') and tipo <> 'nova_admissao'));
+select t.ok('alertas','pré-admissão gera o aviso de nova admissão', exists (select 1 from rh.alertas where referencia = 'vinculo:v8' and tipo = 'nova_admissao' and status = 'aberto'));
 
 -- C. Idempotência e resolução
 select set_config('t.r2', t.sync_rh(t.lote_rh())::text, false);
