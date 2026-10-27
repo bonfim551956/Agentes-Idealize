@@ -198,3 +198,15 @@ export type AtribuicaoPainel = {
   atendentes: { responsavel_id: number | null; nome: string | null; unidades: string[] | null; leads: number; compraram: number;
     compraram_novos: number; faturamento: number; faturamento_novos: number }[];
 };
+
+export type SupervisorPainel = {
+  config: { ativo: boolean; agente: string; enviar: boolean; destinos: number; horarios: string; modo_seguro: boolean; auto_modo_seguro: boolean };
+  ultima: { em: string; abertos: number; novos: number; resolvidos: number; auditoria_ok: boolean } | null;
+  agentes: { agente_id: string; nome: string; status: string; leitura_ligada: boolean; ultima_leitura: string | null; minutos_desde: number | null;
+    limite_min: number | null; alertas_abertos: number; problemas_24h: number; atrasado: boolean;
+    amostra: { em: string; conferidos: number; iguais: number; mudaram_depois: number; divergentes: number; nao_encontrados: number } | null }[];
+  achados: { id: number; tipo: string; agente_id: string | null; severidade: string; titulo: string; aberto_em: string; notificado_em: string | null }[];
+  resolvidos: { id: number; tipo: string; severidade: string; titulo: string; aberto_em: string; resolvido_em: string }[];
+  mensagens: { id: number; tipo: "urgente" | "resumo"; status: string; texto: string; criada_em: string; enviada_em: string | null; erro: string | null }[];
+  previa: string;
+};

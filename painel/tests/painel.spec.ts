@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -276,6 +276,20 @@ test.describe("estados e permissões", () => {
     await expect(ana.getByRole("cell", { name: "20%" })).toBeVisible();
     await expect(ana.getByRole("cell", { name: "R$ 800,00" })).toBeVisible();
     await expect(page.getByText("Sem responsável na Kommo")).toBeVisible();
+  });
+
+  test("supervisor mostra problemas, saúde dos agentes, conferência na fonte e avisos em sombra", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/supervisor");
+    await expect(page.getByText(/Supervisor desligado/)).toBeVisible();
+    await expect(page.getByText(/Envio pelo WhatsApp desligado/)).toBeVisible();
+    await expect(page.getByText("Agente de Laboratório: sem leitura há 3 h (limite 1 h)", { exact: true })).toBeVisible();
+    const lab = page.getByRole("row", { name: /Agente de Laboratório/ });
+    await expect(lab.getByText("Atrasado")).toBeVisible();
+    await expect(lab.getByRole("cell", { name: "9 de 10 batem · 1 diferente(s)" })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Agente de RH/ }).getByText("Desligado")).toBeVisible();
+    await expect(page.getByText("Não enviado (modo sombra)")).toBeVisible();
+    await expect(page.getByText(/Prévia do próximo resumo/)).toBeVisible();
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

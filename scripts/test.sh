@@ -36,6 +36,8 @@ echo "→ testes do agente de RH"
 $P -f tests/99_rh.sql
 echo "→ testes do agente de atribuição"
 $P -f tests/98_atr.sql
+echo "→ testes do agente supervisor"
+$P -f tests/100_sup.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
@@ -54,3 +56,5 @@ echo "→ função de sincronização do RH (Deno)"
 (cd supabase/functions && deno test --allow-env rh-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
 echo "→ função de sincronização da atribuição (Deno)"
 (cd supabase/functions && deno test --allow-env atribuicao-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ função do agente supervisor (Deno)"
+(cd supabase/functions && deno test --allow-env supervisor-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")

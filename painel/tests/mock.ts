@@ -238,6 +238,24 @@ export const RPC: Record<string, unknown> = {
       { responsavel_id: null, nome: null, unidades: ["campinas"], leads: 40, compraram: 2, compraram_novos: 2, faturamento: 1600, faturamento_novos: 1600 },
     ],
   },
+  painel_supervisor: {
+    config: { ativo: false, agente: "pausado", enviar: false, destinos: 1, horarios: "7,12,18", modo_seguro: false, auto_modo_seguro: true },
+    ultima: { em: ha(20), abertos: 2, novos: 1, resolvidos: 1, auditoria_ok: true },
+    agentes: [
+      { agente_id: "laboratorio", nome: "Agente de Laboratório", status: "ativo", leitura_ligada: true, ultima_leitura: ha(190), minutos_desde: 190,
+        limite_min: 60, alertas_abertos: 12, problemas_24h: 0, atrasado: true,
+        amostra: { em: ha(20), conferidos: 10, iguais: 8, mudaram_depois: 1, divergentes: 1, nao_encontrados: 0 } },
+      { agente_id: "rh", nome: "Agente de RH", status: "pausado", leitura_ligada: false, ultima_leitura: null, minutos_desde: null,
+        limite_min: 2160, alertas_abertos: 0, problemas_24h: 0, atrasado: false, amostra: null },
+    ],
+    achados: [
+      { id: 1, tipo: "agente_atrasado", agente_id: "laboratorio", severidade: "alta", titulo: "Agente de Laboratório: sem leitura há 3 h (limite 1 h)", aberto_em: ha(70), notificado_em: ha(60) },
+      { id: 2, tipo: "ligado_pela_metade", agente_id: "comercial", severidade: "media", titulo: "Agente Comercial: agente ativo, mas a leitura está desligada", aberto_em: ha(30), notificado_em: null },
+    ],
+    resolvidos: [{ id: 3, tipo: "incidente", severidade: "media", titulo: "Falhas repetidas em lab_sincronizacao", aberto_em: ha(300), resolvido_em: ha(100) }],
+    mensagens: [{ id: 1, tipo: "urgente", status: "sombra", texto: "Idealize AI — ATENÇÃO\n\n• Agente de Laboratório: sem leitura há 3 h (limite 1 h)", criada_em: ha(60), enviada_em: null, erro: null }],
+    previa: "Idealize AI — resumo das 12h\n\nAgentes: 5 em dia, 1 atrasado",
+  },
   painel_rh: {
     hoje: "2026-10-26", mes: "2026-10-01",
     sincronizacao: { ativa: false, agente: "pausado", ultima: null },

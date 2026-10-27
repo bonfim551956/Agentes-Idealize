@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -58,6 +58,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/custos", rotulo: "Custos de IA", icone: <CircleDollarSign className={ic} /> },
     ] },
     { titulo: "Controle", itens: [
+      ...(eu.pode.consultar_global ? [{ para: "/supervisor", rotulo: "Supervisor", icone: <ShieldCheck className={ic} /> }] : []),
       ...(eu.pode.auditoria ? [{ para: "/auditoria", rotulo: "Histórico auditado", icone: <FileSearch className={ic} /> }] : []),
       { para: "/operacao", rotulo: "Operação e integrações", icone: <ServerCog className={ic} /> },
       ...(eu.pode.administrar ? [{ para: "/usuarios", rotulo: "Pessoas e permissões", icone: <Users className={ic} /> }] : []),
