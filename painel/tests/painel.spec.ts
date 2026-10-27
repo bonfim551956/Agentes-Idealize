@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -225,6 +225,19 @@ test.describe("estados e permissões", () => {
     await dlg.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_marketing_conta_loja")?.corpo).toEqual(
       { p_conta: "1441410073197795", p_unidade: "sorocaba", p_marca: "idealize", p_motivo: "conta da loja de Sorocaba" });
+  });
+
+  test("caixa mostra o que não foi achado no extrato e o que aguarda extrato", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/caixa");
+    await expect(page.getByText(/Agente desligado/)).toBeVisible();
+    await expect(page.getByText("Pix: 2 valores (R$ 100,00, R$ 100,00) registrados no caixa e não achados no extrato do banco.")).toBeVisible();
+    await expect(page.getByText("falta R$ 200,00")).toBeVisible();
+    await expect(page.getByLabel("aguardando extrato")).toBeVisible();
+    await expect(page.getByText("(sem conferência)")).toBeVisible();
+    await expect(page.getByText("formas somam R$ 3.006,00")).toBeVisible();
+    await page.getByLabel("Tipo de alerta").selectOption("caixa_nao_fechado");
+    await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

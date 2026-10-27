@@ -226,6 +226,26 @@ export const RPC: Record<string, unknown> = {
     ],
   },
   painel_marketing_conta_loja: null,
+  painel_caixa: {
+    periodo_dias: 7, desde: "2026-10-20", ate: "2026-10-26",
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null },
+    fontes: [{ forma: "pix", fonte: "banco", rotulo: "Pix" }, { forma: "asaas", fonte: "asaas", rotulo: "Asaas" },
+      { forma: "credito", fonte: "stone", rotulo: "Crédito" }, { forma: "dinheiro", fonte: "deposito", rotulo: "Dinheiro" },
+      { forma: "crediario", fonte: "nenhuma", rotulo: "Multicrediário" }],
+    cobertura: [{ unidade_id: "sao_vicente", fonte: "banco", ate: "2026-10-26" }, { unidade_id: "sao_vicente", fonte: "asaas", ate: "2026-10-26" }],
+    conferencia: [
+      { unidade_id: "sao_vicente", dia: "2026-10-23", forma: "pix", sistema: 706, quantidade: 5, achado: 506, faltando: 200 },
+      { unidade_id: "sao_vicente", dia: "2026-10-23", forma: "asaas", sistema: 600, quantidade: 1, achado: 600, faltando: 0 },
+      { unidade_id: "sao_vicente", dia: "2026-10-23", forma: "credito", sistema: 800, quantidade: 2, achado: 0, faltando: 800 },
+      { unidade_id: "sao_vicente", dia: "2026-10-23", forma: "crediario", sistema: 900, quantidade: 1, achado: 0, faltando: 900 },
+    ],
+    dias: [{ unidade_id: "sao_vicente", dia: "2026-10-23", status_adm: "aberto", caixa: 3100, soma_formas: 3006, deposito_valor: null }],
+    alertas: [
+      { id: 1, tipo: "nao_encontrado", referencia: "sao_vicente:2026-10-23:pix", unidade_id: "sao_vicente", dia: "2026-10-23", aberto_em: ha(60),
+        detalhe: { forma: "pix", rotulo: "Pix", fonte: "banco", quantidade: 2, valor: 200, valores: [100, 100] } },
+      { id: 2, tipo: "caixa_nao_fechado", referencia: "sao_vicente:2026-10-22", unidade_id: "sao_vicente", dia: "2026-10-22", aberto_em: ha(600), detalhe: {} },
+    ],
+  },
   painel_aprovar: "pronta", painel_plataforma_pausar: null, painel_reconciliar: "validando", painel_pendencia_tratar: null,
   painel_incidente_tratar: null, painel_fechamento_decidir: "aprovado", painel_agente_status: null, painel_papel_conceder: null,
 };

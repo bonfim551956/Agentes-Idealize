@@ -28,6 +28,8 @@ echo "→ testes do agente comercial"
 $P -f tests/80_com.sql
 echo "→ testes do agente de marketing"
 $P -f tests/90_mkt.sql
+echo "→ testes do agente de caixa"
+$P -f tests/95_cx.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
@@ -38,3 +40,5 @@ echo "→ função de sincronização comercial / Kommo (Deno)"
 (cd supabase/functions && deno test --allow-env kommo-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
 echo "→ função de sincronização de marketing / Meta (Deno)"
 (cd supabase/functions && deno test --allow-env meta-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ função de sincronização do caixa (Deno)"
+(cd supabase/functions && deno test --allow-env caixa-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
