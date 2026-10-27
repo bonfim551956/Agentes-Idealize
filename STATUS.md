@@ -1,6 +1,6 @@
 # STATUS — Idealize AI
 
-**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Os 6 agentes (Laboratório, Comercial, Marketing, Caixa, Cobranças, RH) instalados e pausados; nada rodando.
+**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH → Atribuição). Os 7 agentes (Laboratório, Comercial, Marketing, Caixa, Cobranças, RH, Atribuição) instalados e pausados; nada rodando.
 **Último estado validado:** 26/10/2026 — v0.5.0 · 324 testes SQL + concorrência + 11 Deno + 10 unidade + 16 navegador, 0 falhas · Supabase: 41 funções idênticas às testadas, nada rodando
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
@@ -44,6 +44,9 @@
       (`docs/adm/cobrancas_leitura.sql`), tela no painel; instalado PAUSADO — `docs/evidencias/2026-10-27_agente_cobrancas.md`
 - [x] Agente de RH v0.1.0 — `20261027140000`, `rh-sync` (RH 360 só leitura), visões no RH 360 (`docs/rh360/rh_leitura.sql`),
       tela no painel; instalado PAUSADO — `docs/evidencias/2026-10-27_agente_rh.md`
+- [x] Agente de Atribuição v0.1.0 — `20261027150000`, `atribuicao-sync` (Kommo só GET + ADM só leitura; telefone só como
+      código HMAC), visão no ADM (`docs/adm/atribuicao_leitura.sql`), tela "Retorno das campanhas" (loja, atendente, campanha);
+      instalado PAUSADO — `docs/evidencias/2026-10-27_agente_atribuicao.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
