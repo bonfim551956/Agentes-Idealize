@@ -22,8 +22,9 @@ vira código HMAC-SHA256 (segredo `ATR_CHAVE_TELEFONE`) em memória, dos dois la
 - Travas: agente `pausado`, `atr.sync.ativo = false`, 6 políticas proibidas (guardar telefone, enviar mensagem,
   alterar lead, alterar venda, alterar campanha, excluir), RLS forçada em todas as tabelas `atr`, `anon` sem acesso ao painel.
 - O banco recusa qualquer lote com telefone fora do formato de código (64 hexadecimais).
-- Edge function `atribuicao-sync` v1 (ACTIVE, verify_jwt=false): sem `ATR_WORKER_SECRET` responde 503; com
-  `atr.sync.ativo = false` responde "desligado" sem ler nada.
+- Edge function `atribuicao-sync` v1 (ACTIVE, verify_jwt=false). Pelo código, e coberto nos testes Deno: sem
+  `ATR_WORKER_SECRET` responde 503; com `atr.sync.ativo = false` responde "desligado" sem ler nada. A chamada real
+  daqui não foi possível porque a rede desta sessão bloqueia o domínio do Supabase.
 
 ## Para ligar ("PODE LIGAR A ATRIBUIÇÃO")
 `ATR_CHAVE_TELEFONE` (32+ caracteres, definida uma vez e nunca trocada; trocar zera o histórico de casamentos),
