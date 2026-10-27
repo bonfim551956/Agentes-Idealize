@@ -227,6 +227,11 @@ export async function instalar(page: Page, o: Opcoes = {}) {
       return json(r, sessao("aal1", comFator));
     }
     if (p === "/auth/v1/token") return json(r, sessao(nivel, comFator));
+    if (p === "/auth/v1/recover") { chamadas.push({ fn: "auth_recover", corpo: r.request().postDataJSON() }); return json(r, {}); }
+    if (p === "/auth/v1/user" && r.request().method() === "PUT") {
+      chamadas.push({ fn: "auth_user_put", corpo: r.request().postDataJSON() });
+      return json(r, usuario(comFator));
+    }
     if (p === "/auth/v1/user") return json(r, usuario(comFator));
     if (p === "/auth/v1/logout") return r.fulfill({ status: 204 });
     if (p === "/auth/v1/factors" && r.request().method() === "POST")

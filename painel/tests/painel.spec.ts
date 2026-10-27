@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EU_GERENTE, HASH, instalar } from "./mock";
+import { EU_GERENTE, HASH, instalar, jwt } from "./mock";
 
 test.describe("entrada", () => {
   test("senha errada mostra mensagem clara", async ({ page }) => {
@@ -32,6 +32,39 @@ test.describe("entrada", () => {
     await expect(page.getByRole("heading", { name: "Ative a verificação em duas etapas" })).toBeVisible();
     await expect(page.getByAltText("QR code para o aplicativo autenticador")).toBeVisible();
     await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
+  });
+
+  test("esqueci minha senha envia o link sem revelar se o e-mail existe", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: false });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Esqueci minha senha" }).click();
+    await page.getByLabel("E-mail").fill("diego@teste.local");
+    await page.getByRole("button", { name: "Enviar link" }).click();
+    await expect(page.getByText(/Se esse e-mail tiver acesso ao painel/)).toBeVisible();
+    expect(chamadas.find((c) => c.fn === "auth_recover")?.corpo).toMatchObject({ email: "diego@teste.local" });
+  });
+
+  test("link do e-mail exige o código do autenticador antes de trocar a senha", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: false });
+    await page.goto(`/#access_token=${jwt("aal1")}&refresh_token=r1&expires_in=3600&token_type=bearer&type=recovery`);
+    await expect(page.getByRole("heading", { name: "Confirme que é você" })).toBeVisible();
+    expect(page.url()).not.toContain("access_token");
+    await page.getByLabel("Código de 6 dígitos").fill("123456");
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await expect(page.getByRole("heading", { name: "Crie a senha nova" })).toBeVisible();
+    await page.getByLabel("Senha nova", { exact: true }).fill("curta");
+    await expect(page.getByText("Faltam 7 caracteres.")).toBeVisible();
+    await page.getByLabel("Senha nova", { exact: true }).fill("uma frase longa e minha");
+    await page.getByLabel("Repita a senha nova").fill("uma frase longa e minha");
+    await page.getByRole("button", { name: "Salvar senha nova" }).click();
+    await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
+    expect(chamadas.find((c) => c.fn === "auth_user_put")?.corpo).toMatchObject({ password: "uma frase longa e minha" });
+  });
+
+  test("link vencido avisa e volta para o login", async ({ page }) => {
+    await instalar(page, { logado: false });
+    await page.goto("/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired");
+    await expect(page.getByRole("alert")).toHaveText("O link de redefinição venceu ou já foi usado. Peça um novo.");
   });
 
   test("login sem vínculo vê aviso e não vê dados", async ({ page }) => {

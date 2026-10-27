@@ -7,6 +7,7 @@ import { traduzir } from "../lib/erros";
 import { Login } from "./Login";
 import { Cadastrar2fa, Confirmar2fa } from "./DoisFatores";
 import { TelaCentral } from "./TelaCentral";
+import { CHAVE_RECUPERACAO, NovaSenha, lerRetornoDoEmail } from "./Recuperacao";
 import { Botao, ErroCaixa } from "../ui/base";
 
 const INATIVIDADE_MS = 30 * 60 * 1000; // sessão encerra após 30 min sem uso
@@ -24,6 +25,7 @@ type Etapa =
   | { e: "entrar" }
   | { e: "cadastrar_2fa" }
   | { e: "confirmar_2fa"; fator: string }
+  | { e: "nova_senha" }
   | { e: "sem_acesso"; msg: string }
   | { e: "erro"; msg: string }
   | { e: "pronto"; eu: Eu };
@@ -31,9 +33,12 @@ type Etapa =
 export function Sessao({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined);
   const [etapa, setEtapa] = useState<Etapa>({ e: "carregando" });
+  const [aviso, setAviso] = useState<string | null>(null);
+  const recuperando = () => { try { return window.sessionStorage.getItem(CHAVE_RECUPERACAO) === "1"; } catch { return false; } };
 
   const qc = useQueryClient();
   const sair = useCallback(async () => {
+    try { window.sessionStorage.removeItem(CHAVE_RECUPERACAO); } catch { /* sem storage */ }
     await supabase.auth.signOut();
     qc.clear(); // nada do usuário anterior fica em memória
     setEtapa({ e: "entrar" });
@@ -41,8 +46,19 @@ export function Sessao({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!configurado) return;
-    supabase.auth.getSession().then(({ data }) => setSessao(data.session));
     const { data } = supabase.auth.onAuthStateChange((_ev, s) => setSessao(s));
+    (async () => {
+      // Volta do link de "esqueci minha senha": abre sessão de nível 1; trocar a senha ainda exige o código do autenticador.
+      const r = lerRetornoDoEmail();
+      if (r?.tipo === "erro") setAviso(r.msg);
+      if (r?.tipo === "recuperacao") {
+        const { error } = await supabase.auth.setSession({ access_token: r.access_token, refresh_token: r.refresh_token });
+        if (error) setAviso("O link de redefinição venceu ou já foi usado. Peça um novo.");
+        else try { window.sessionStorage.setItem(CHAVE_RECUPERACAO, "1"); } catch { /* sem storage */ }
+      }
+      const { data: d } = await supabase.auth.getSession();
+      setSessao(d.session);
+    })();
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -57,6 +73,7 @@ export function Sessao({ children }: { children: ReactNode }) {
       const totp = fatores.totp.find((f) => f.status === "verified");
       if (!totp) { setEtapa({ e: "cadastrar_2fa" }); return; }
       if (nivel.currentLevel !== "aal2") { setEtapa({ e: "confirmar_2fa", fator: totp.id }); return; }
+      if (recuperando()) { setEtapa({ e: "nova_senha" }); return; }
       const eu = await rpc<Eu>("painel_eu");
       setEtapa({ e: "pronto", eu });
     } catch (e) {
@@ -85,7 +102,9 @@ export function Sessao({ children }: { children: ReactNode }) {
     case "carregando":
       return <TelaCentral titulo="Abrindo o painel" carregando />;
     case "entrar":
-      return <Login />;
+      return <Login aviso={aviso} />;
+    case "nova_senha":
+      return <NovaSenha aoConcluir={avaliar} aoSair={sair} />;
     case "cadastrar_2fa":
       return <Cadastrar2fa aoConcluir={avaliar} aoSair={sair} />;
     case "confirmar_2fa":
