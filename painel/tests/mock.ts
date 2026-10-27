@@ -226,6 +226,24 @@ export const RPC: Record<string, unknown> = {
     ],
   },
   painel_marketing_conta_loja: null,
+  painel_rh: {
+    hoje: "2026-10-26", mes: "2026-10-01",
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null },
+    quadro: [{ unidade_id: "sao_vicente", ativos: 9, em_experiencia: 3, em_ferias: 1, afastados: 0, em_admissao: 1, admitidos_mes: 2, desligados_mes: 0 }],
+    alertas: [
+      { id: 1, tipo: "ferias_vencidas", referencia: "vinculo:a:2023-11-01:fora", unidade_id: "sao_vicente", prazo: "2025-10-31", aberto_em: ha(60),
+        detalhe: { nome: "COLABORADORA TESTE", aquisitivo_inicio: "2023-11-01", aquisitivo_fim: "2024-10-31", limite: "2025-10-31", dias_fora_do_prazo: 30 } },
+      { id: 2, tipo: "fim_experiencia", referencia: "vinculo:b:45", unidade_id: "sao_vicente", prazo: "2026-10-31", aberto_em: ha(60),
+        detalhe: { nome: "CONSULTOR NOVO", marco_dias: 45, termina: "2026-10-31" } },
+      { id: 3, tipo: "uniforme_baixo", referencia: "uniforme:u", unidade_id: null, prazo: null, aberto_em: ha(60),
+        detalhe: { peca: "POLO FEMININO", tamanho: "M", saldo: 3, minimo: 12 } },
+    ],
+    contabilidade: {
+      admissoes: [{ nome: "CONSULTOR NOVO", unidade_id: "sao_vicente", cargo: "CONSULTOR DE VENDAS", data: "2026-10-01" }],
+      desligamentos: [], ferias: [{ nome: "COLABORADORA TESTE", unidade_id: "sao_vicente", inicio: "2026-10-13", fim: "2026-11-01", programada: false }],
+      mudancas: [{ nome: "COLABORADORA TESTE", unidade_id: "sao_vicente", tipo: "salario", data: "2026-10-01" }],
+    },
+  },
   painel_cobrancas: {
     hoje: "2026-10-26",
     sincronizacao: { ativa: false, agente: "pausado", ultima: null, asaas_lojas: [] },

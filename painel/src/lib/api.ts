@@ -173,3 +173,17 @@ export type CobrancasPainel = {
   recebido_30d: { unidade_id: string; financeira: string; valor: number; parcelas: number }[];
   alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
 };
+
+export type RhPainel = {
+  hoje: string; mes: string;
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; vinculos: number; ativos: number } | null };
+  quadro: { unidade_id: string; ativos: number; em_experiencia: number; em_ferias: number; afastados: number; em_admissao: number;
+    admitidos_mes: number; desligados_mes: number }[];
+  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; prazo: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
+  contabilidade: {
+    admissoes: { nome: string; unidade_id: string; cargo: string | null; data: string }[];
+    desligamentos: { nome: string; unidade_id: string; data: string; modalidade: string | null }[];
+    ferias: { nome: string; unidade_id: string; inicio: string; fim: string; programada: boolean }[];
+    mudancas: { nome: string; unidade_id: string; tipo: "cargo" | "salario"; data: string }[];
+  };
+};

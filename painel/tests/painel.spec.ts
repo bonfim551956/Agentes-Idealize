@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -250,6 +250,18 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("R$ 3.493,64")).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("parcela_vencida");
     await expect(page.getByText(/não corresponde a nenhuma parcela/)).toHaveCount(0);
+  });
+
+  test("RH mostra prazos, quadro e a lista do mês para a contabilidade", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/rh");
+    await expect(page.getByText(/Agente desligado/)).toBeVisible();
+    await expect(page.getByText(/foram tirados depois do limite \(31\/10\/2025\)/)).toBeVisible();
+    await expect(page.getByText("Primeiro período (45 dias) termina em 31/10/2026. Decida se prorroga, efetiva ou encerra.")).toBeVisible();
+    await expect(page.getByText("Estoque central")).toBeVisible();
+    await expect(page.getByText("Salário a partir de 01/10/2026", { exact: false })).toBeVisible();
+    await page.getByLabel("Mês da lista para a contabilidade").fill("2026-09");
+    await expect.poll(() => chamadas.filter((c) => c.fn === "painel_rh").at(-1)?.corpo).toEqual({ p_unidade: null, p_mes: "2026-09-01" });
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {
