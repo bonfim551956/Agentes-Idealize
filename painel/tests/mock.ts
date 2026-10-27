@@ -197,6 +197,35 @@ export const RPC: Record<string, unknown> = {
     funis: [{ id: 10, nome: "Funil Campinas", unidade_id: "campinas" }, { id: 20, nome: "Funil Sorocaba", unidade_id: null }],
   },
   painel_comercial_funil_loja: null,
+  painel_marketing: {
+    periodo_dias: 7, desde: "2026-10-20", ate: "2026-10-26",
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null },
+    lojas: [
+      { id: "campinas", nome: "Campinas", gasto: 5370.9, conversas: 368, leads: 4, impressoes: 410000, gasto_recrutamento: 134.6 },
+      { id: "_sem_loja", nome: "Contas sem loja definida", gasto: 3881.2, conversas: 221, leads: 0, impressoes: 290000, gasto_recrutamento: 46 },
+    ],
+    marcas: [{ marca: "idealize", gasto: 5370.9, conversas: 368, leads: 4 }, { marca: "sem_marca", gasto: 3881.2, conversas: 221, leads: 0 }],
+    campanhas: [
+      { id: "52568233317239", nome: "[ENGAJAMENTO] [MENSAGEM] CAMPINAS", conta: "CA Campinas Idealize", unidade_id: "campinas", status: "ACTIVE",
+        objetivo: "OUTCOME_ENGAGEMENT", recrutamento: false, orcamento_diario: 760, gasto: 5370.9, conversas: 368, leads: 4, cliques: 9100, impressoes: 410000, visitas: 0 },
+      { id: "52629493165439", nome: "Tráfego [vagas]", conta: "CA Campinas Idealize", unidade_id: "campinas", status: "ACTIVE",
+        objetivo: "OUTCOME_TRAFFIC", recrutamento: true, orcamento_diario: 20, gasto: 134.6, conversas: 0, leads: 0, cliques: 400, impressoes: 30000, visitas: 273 },
+    ],
+    por_dia: [0, 1, 2, 3, 4, 5, 6].map((n) => ({ dia: `2026-10-${20 + n}`, gasto: 1200 + n * 20, resultados: 80 + n })),
+    alertas: [
+      { id: 1, tipo: "gasto_sem_resultado", referencia: "campanha:1", unidade_id: "campinas", aberto_em: ha(30),
+        detalhe: { campanha: "[MENSAGEM] Teste", conta: "CA Campinas Idealize", gasto: 70 } },
+      { id: 2, tipo: "conta_com_problema", referencia: "conta:1441410073197795", unidade_id: null, aberto_em: ha(60),
+        detalhe: { conta: "CA IDEALIZE SOROCABA", status_meta: 3 } },
+    ],
+    contas: [
+      { id: "961713916565369", nome: "CA Campinas Idealize", unidade_id: "campinas", marca: "idealize", status_meta: 1,
+        sugestao: { unidade_id: "campinas", marca: "idealize" }, gasto_30d: 23582.18 },
+      { id: "1441410073197795", nome: "CA IDEALIZE SOROCABA", unidade_id: null, marca: null, status_meta: 3,
+        sugestao: { unidade_id: "sorocaba", marca: "idealize" }, gasto_30d: 16834.56 },
+    ],
+  },
+  painel_marketing_conta_loja: null,
   painel_aprovar: "pronta", painel_plataforma_pausar: null, painel_reconciliar: "validando", painel_pendencia_tratar: null,
   painel_incidente_tratar: null, painel_fechamento_decidir: "aprovado", painel_agente_status: null, painel_papel_conceder: null,
 };

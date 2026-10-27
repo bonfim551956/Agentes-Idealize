@@ -169,7 +169,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -207,6 +207,24 @@ test.describe("estados e permissões", () => {
     await dlg.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_comercial_funil_loja")?.corpo).toEqual(
       { p_funil: 20, p_unidade: "campinas", p_motivo: "funil é da loja de Campinas" });
+  });
+
+  test("marketing mostra custo por loja, separa vagas e confirma a loja sugerida de uma conta", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/marketing");
+    await expect(page.getByText(/Agente desligado/)).toBeVisible();
+    await expect(page.getByText("Situação na Meta: Pagamento pendente. Os anúncios dessa conta podem estar parados.")).toBeVisible();
+    await expect(page.getByRole("cell", { name: "[ENGAJAMENTO] [MENSAGEM] CAMPINAS CA Campinas Idealize" })).toBeVisible();
+    await expect(page.getByText("Tráfego [vagas]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Vagas de emprego" }).click();
+    await expect(page.getByText("Tráfego [vagas]")).toBeVisible();
+    await expect(page.getByLabel("Loja da conta CA IDEALIZE SOROCABA")).toHaveValue("sorocaba");
+    await page.getByRole("row", { name: /CA IDEALIZE SOROCABA/ }).getByRole("button", { name: "Salvar" }).click();
+    const dlg = page.getByRole("dialog");
+    await dlg.getByLabel("Motivo").fill("conta da loja de Sorocaba");
+    await dlg.getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_marketing_conta_loja")?.corpo).toEqual(
+      { p_conta: "1441410073197795", p_unidade: "sorocaba", p_marca: "idealize", p_motivo: "conta da loja de Sorocaba" });
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

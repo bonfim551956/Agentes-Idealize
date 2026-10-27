@@ -140,3 +140,17 @@ export type ComercialPainel = {
     detalhe: Record<string, unknown> | null }[];
   funis: { id: number; nome: string; unidade_id: string | null }[] | null;
 };
+
+export type MarketingPainel = {
+  periodo_dias: number; desde: string; ate: string;
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; desde: string; ate: string; contas: number; linhas: number } | null };
+  lojas: { id: string; nome: string; gasto: number; conversas: number; leads: number; impressoes: number; gasto_recrutamento: number }[];
+  marcas: { marca: string; gasto: number; conversas: number; leads: number }[];
+  campanhas: { id: string; nome: string; conta: string; unidade_id: string | null; status: string | null; objetivo: string | null;
+    recrutamento: boolean; orcamento_diario: number | null; gasto: number; conversas: number; leads: number; cliques: number;
+    impressoes: number; visitas: number }[];
+  por_dia: { dia: string; gasto: number; resultados: number }[];
+  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
+  contas: { id: string; nome: string; unidade_id: string | null; marca: string | null; status_meta: number;
+    sugestao: { unidade_id: string | null; marca: string | null }; gasto_30d: number }[] | null;
+};
