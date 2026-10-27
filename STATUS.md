@@ -1,6 +1,6 @@
 # STATUS — Idealize AI
 
-**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Laboratório instalado e pausado; nada rodando.
+**Fase atual:** Demais agentes, um por vez (Laboratório → Comercial/Kommo → Marketing/Meta → Caixa → Cobranças/Asaas → RH). Laboratório e Comercial instalados e pausados; nada rodando.
 **Último estado validado:** 26/10/2026 — v0.5.0 · 324 testes SQL + concorrência + 11 Deno + 10 unidade + 16 navegador, 0 falhas · Supabase: 41 funções idênticas às testadas, nada rodando
 **Produção:** projeto novo dedicado; o Finance AI atual (Sistema ADM) segue intocado.
 **Repositório:** github.com/bonfim551956/Agentes-Idealize
@@ -33,6 +33,8 @@
       `docs/evidencias/2026-10-26_painel_supabase.md`. Publicado pelo Diego na Vercel; login dele vinculado com 2FA.
 - [x] Agente de Laboratório v0.1.0 (§5.3) — `20261027090000`, `lab-sync`, tela no painel; instalado PAUSADO e sem
       leitura do ADM — `docs/evidencias/2026-10-27_agente_laboratorio.md`
+- [x] Agente Comercial/Kommo v0.1.0 — `20261027100000`, `kommo-sync` (só GET), tela no painel; instalado PAUSADO,
+      sem leitura e sem agendamento — `docs/evidencias/2026-10-27_agente_comercial.md`
 
 ## O que a fundação garante (cada item tem teste executado)
 | Garantia | Testes |
