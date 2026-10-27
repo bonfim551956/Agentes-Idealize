@@ -24,9 +24,13 @@ echo "→ testes do painel (camada de acesso)"
 $P -f tests/60_painel.sql
 echo "→ testes do agente de laboratório"
 $P -f tests/70_lab.sql
+echo "→ testes do agente comercial"
+$P -f tests/80_com.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
 tests/e2e/run.sh
 echo "→ função de sincronização do laboratório (Deno)"
 (cd supabase/functions && deno test --allow-env lab-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ função de sincronização comercial / Kommo (Deno)"
+(cd supabase/functions && deno test --allow-env kommo-sync/normalizar_test.ts 2>&1 | grep -E "passed|failed")

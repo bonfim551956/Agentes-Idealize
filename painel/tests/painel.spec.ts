@@ -136,7 +136,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"],
+      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -157,6 +157,23 @@ test.describe("estados e permissões", () => {
     await page.getByLabel("Tipo de alerta").selectOption("prazo_vencido");
     await expect(page.getByText("OS 2002, pedido BR-55102")).toHaveCount(0);
     await expect(page.getByText("OS 1001, pedido BR-55821")).toBeVisible();
+  });
+
+  test("comercial mostra quem espera resposta e define a loja de um funil", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/comercial");
+    await expect(page.getByText(/Agente desligado: os números abaixo são da última leitura, e ainda não houve nenhuma/)).toBeVisible();
+    await expect(page.getByText(/Última mensagem do cliente há 50 min \(limite 30 min\)/)).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Atendente Bia" })).toBeVisible();
+    await page.getByLabel("Tipo de alerta").selectOption("lead_parado");
+    await expect(page.getByText(/Última mensagem do cliente/)).toHaveCount(0);
+    await page.getByLabel("Loja do funil Funil Sorocaba").selectOption("campinas");
+    await page.getByRole("row", { name: /Funil Sorocaba/ }).getByRole("button", { name: "Salvar" }).click();
+    const dlg = page.getByRole("dialog");
+    await dlg.getByLabel("Motivo").fill("funil é da loja de Campinas");
+    await dlg.getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_comercial_funil_loja")?.corpo).toEqual(
+      { p_funil: 20, p_unidade: "campinas", p_motivo: "funil é da loja de Campinas" });
   });
 
   test("auditoria verifica a integridade", async ({ page }) => {

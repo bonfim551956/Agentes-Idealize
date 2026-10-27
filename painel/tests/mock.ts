@@ -175,6 +175,28 @@ export const RPC: Record<string, unknown> = {
         os: "2002", pedido: "BR-55102", tipo_os: "venda", laboratorio: "LAB PRÓPRIO", etapa: "Avisado", prazo: "2026-10-01", urgente: false, entrou_etapa_em: ha(30000) },
     ],
   },
+  painel_comercial: {
+    periodo_dias: 7, limite_resposta_min: 30,
+    sincronizacao: { ativa: false, agente: "pausado", ultima: null },
+    lojas: [
+      { id: "campinas", nome: "Campinas", leads_novos: 84, ganhos: 21, perdidos: 9, valor_ganho: 18450.9, em_aberto: 40 },
+      { id: "_sem_loja", nome: "Funis sem loja definida", leads_novos: 12, ganhos: 2, perdidos: 1, valor_ganho: 1200, em_aberto: 7 },
+    ],
+    atendentes: [
+      { id: 7, nome: "Atendente Ana", respondidas: 120, mediana_min: 12.5, no_limite_pct: 81.2, ganhos: 11 },
+      { id: 8, nome: "Atendente Bia", respondidas: 64, mediana_min: 47, no_limite_pct: 40, ganhos: 4 },
+    ],
+    resposta_geral: { respondidas: 184, mediana_min: 18, no_limite_pct: 67.4 },
+    alertas: [
+      { id: 1, tipo: "cliente_sem_resposta", referencia: "lead:100", unidade_id: "campinas", responsavel: "Atendente Bia", aberto_em: ha(1),
+        detalhe: { desde: new Date(Date.now() - 50 * 60000).toISOString(), minutos: 50, limite_min: 30 } },
+      { id: 2, tipo: "lead_parado", referencia: "lead:104", unidade_id: "campinas", responsavel: "Atendente Ana", aberto_em: ha(30),
+        detalhe: { etapa: "Em contato", dias: 5, limite_dias: 3 } },
+      { id: 3, tipo: "funil_sem_loja", referencia: "funil:20", unidade_id: null, responsavel: null, aberto_em: ha(30), detalhe: { funil: "Funil Sorocaba" } },
+    ],
+    funis: [{ id: 10, nome: "Funil Campinas", unidade_id: "campinas" }, { id: 20, nome: "Funil Sorocaba", unidade_id: null }],
+  },
+  painel_comercial_funil_loja: null,
   painel_aprovar: "pronta", painel_plataforma_pausar: null, painel_reconciliar: "validando", painel_pendencia_tratar: null,
   painel_incidente_tratar: null, painel_fechamento_decidir: "aprovado", painel_agente_status: null, painel_papel_conceder: null,
 };

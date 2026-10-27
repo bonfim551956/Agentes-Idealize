@@ -129,3 +129,14 @@ export type LabPainel = {
     pedido: string | null; tipo_os: string | null; laboratorio: string | null; etapa: string; prazo: string | null; urgente: boolean;
     entrou_etapa_em: string | null }[];
 };
+
+export type ComercialPainel = {
+  periodo_dias: number; limite_resposta_min: number;
+  sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; ate: string; leads: number; mensagens_novas: number } | null };
+  lojas: { id: string; nome: string; leads_novos: number; ganhos: number; perdidos: number; valor_ganho: number; em_aberto: number }[];
+  atendentes: { id: number; nome: string; respondidas: number; mediana_min: number | null; no_limite_pct: number | null; ganhos: number }[];
+  resposta_geral: { respondidas: number; mediana_min: number | null; no_limite_pct: number | null };
+  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; responsavel: string | null; aberto_em: string;
+    detalhe: Record<string, unknown> | null }[];
+  funis: { id: number; nome: string; unidade_id: string | null }[] | null;
+};
