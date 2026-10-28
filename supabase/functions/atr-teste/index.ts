@@ -44,7 +44,10 @@ Deno.serve(async () => {
       if (!/(pooler\.supabase\.com|supabase\.co)(:\d+)?\//.test(t)) p.push("o servidor não parece ser do Supabase");
       return p;
     };
-    if (!adm) r.ADM_LEITURA_DB_URL = "não existe";
+    if (!adm) {
+      const parecidos = Object.keys(Deno.env.toObject()).filter((k) => /adm|leitura|db_url|url/i.test(k) && !/^SUPABASE_/.test(k));
+      r.ADM_LEITURA_DB_URL = "não existe" + (parecidos.length ? ` (nomes parecidos encontrados: ${parecidos.map((k) => JSON.stringify(k)).join(", ")})` : " (nenhum nome parecido)");
+    }
     else if (problemas(adm).length) r.ADM_LEITURA_DB_URL = "endereço com problema: " + problemas(adm).join("; ");
     else {
       let c: ReturnType<typeof postgres> | null = null;
