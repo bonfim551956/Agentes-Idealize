@@ -46,7 +46,7 @@ Deno.test("planilha vira texto com ; para a IA ler", () => {
 Deno.test("pedido à IA: PDF como documento, ferramenta obrigatória, conteúdo marcado como dado", () => {
   const r = requisicaoEnvio("m", { formato: "pdf", mime: "application/pdf" }, enc("%PDF"), { tipo_declarado: "fatura", nome: "fatura.pdf", hoje: "2026-10-27",
     categorias: [{ id: "laboratorio", nome: "Laboratórios" }] }) as any;
-  igual(r.tool_choice, { type: "tool", name: "ler_documento" });
+  igual(r.tool_choice, { type: "auto" });   // forçar a ferramenta não é aceito pelo modelo (achado 28/10)
   igual(r.messages[0].content[0].type, "document");
   igual(r.messages[0].content[1].text.includes("laboratorio — Laboratórios"), true);
   const t = requisicaoEnvio("m", { formato: "texto", mime: "text/plain" }, "a;b", { tipo_declarado: "stone", nome: "s.csv", hoje: "2026-10-27", categorias: [] }) as any;
