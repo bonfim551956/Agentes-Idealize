@@ -25,31 +25,43 @@ export function clienteKommo(subdominio: string, token: string, f: typeof fetch 
     const u = new URL(`https://${subdominio}.kommo.com/api/v4/${caminho}`);
     for (const [k, v] of params) u.searchParams.append(k, v);
     for (let tentativa = 0; ; tentativa++) {
-      const r = await f(u, { method: "GET", headers: { authorization: `Bearer ${token}`, accept: "application/json" } });
+      let r: Response;
+      try {
+        r = await f(u, { method: "GET", headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal: AbortSignal.timeout(30_000) });
+      } catch (e) {   // conexão caiu / demorou: tenta de novo com espera crescente
+        if (tentativa < 3) { await espera(2000 * 2 ** tentativa); continue; }
+        throw new Error(`Kommo ${caminho}: conexão falhou depois de 4 tentativas (${String(e instanceof Error ? e.message : e).slice(0, 80)})`);
+      }
       if (r.status === 204) return null;
-      if (r.status === 429 && tentativa < 3) { await espera(1000 * (tentativa + 1)); continue; }
-      if (!r.ok) throw new Error(`Kommo ${caminho}: HTTP ${r.status}`);
+      if ((r.status === 429 || r.status >= 500) && tentativa < 3) { await r.body?.cancel(); await espera(2000 * 2 ** tentativa); continue; }
+      if (!r.ok) { await r.body?.cancel(); throw new Error(`Kommo ${caminho}: HTTP ${r.status}`); }
       return await r.json() as Obj;
     }
   };
 }
 
-export async function lerLeads(buscar: Buscar, desde: number, ate: number, chave: CryptoKey): Promise<Obj[]> {
-  const leads: Obj[] = [];
-  for (let page = 1; page <= 200; page++) {
-    const r = await buscar("leads", [["with", "contacts"], ["filter[created_at][from]", String(desde)], ["filter[created_at][to]", String(ate)],
-      ["limit", "250"], ["page", String(page)]]);
-    const xs = (((r?._embedded ?? {}) as Obj).leads ?? []) as Obj[];
-    leads.push(...xs);
-    if (!r || xs.length < 250) break;
-    await espera(200);
-    if (page === 200) throw new Error("Kommo: leads demais na janela; leitura interrompida");
+export type Faixa = { campo: "created_at" | "updated_at"; de: number; ate: number };
+
+// Lê uma ou mais faixas (o que mudou desde a última leitura + um pedaço do histórico), sem repetir lead
+export async function lerLeads(buscar: Buscar, faixas: Faixa[], chave: CryptoKey): Promise<Obj[]> {
+  const porId = new Map<number, Obj>();
+  for (const fx of faixas) {
+    for (let page = 1; ; page++) {
+      if (page > 120) throw new Error("Kommo: mais de 30 mil leads numa faixa; diminua atr.carga_pedaco_dias");
+      const r = await buscar("leads", [["with", "contacts"], [`filter[${fx.campo}][from]`, String(fx.de)], [`filter[${fx.campo}][to]`, String(fx.ate)],
+        ["limit", "250"], ["page", String(page)]]);
+      const xs = (((r?._embedded ?? {}) as Obj).leads ?? []) as Obj[];
+      for (const l of xs) if (typeof l.id === "number") porId.set(l.id, l);
+      if (!r || xs.length < 250) break;
+      await espera(150);
+    }
   }
-  // telefones dos contatos principais, em lotes de 50 ids
+  const leads = [...porId.values()];
+  // telefones dos contatos principais, em lotes de 200 ids
   const ids = [...new Set(leads.map(contatoPrincipal).filter((x): x is number => x != null))];
   const telefone = new Map<number, string>();
-  for (let i = 0; i < ids.length; i += 50) {
-    const r = await buscar("contacts", ids.slice(i, i + 50).map((id) => ["filter[id][]", String(id)] as [string, string]).concat([["limit", "250"]]));
+  for (let i = 0; i < ids.length; i += 200) {
+    const r = await buscar("contacts", ids.slice(i, i + 200).map((id) => ["filter[id][]", String(id)] as [string, string]).concat([["limit", "250"]]));
     for (const c of (((r?._embedded ?? {}) as Obj).contacts ?? []) as Obj[]) {
       const t = telefonesContato(c)[0];
       if (t && typeof c.id === "number") telefone.set(c.id, t);
@@ -101,7 +113,11 @@ export async function executar(): Promise<Record<string, unknown>> {
   let lote: Obj;
   try {
     const chave = await importarChave(segredo);
-    lote = { leads: await lerLeads(clienteKommo(sub, token), Number(j.leads_desde), Number(j.ate), chave), vendas: await lerVendas(url, chave) };
+    const faixas: Faixa[] = [];
+    if (j.atualizados_desde != null) faixas.push({ campo: "updated_at", de: Number(j.atualizados_desde), ate: Number(j.ate) });
+    if (j.carga_de != null) faixas.push({ campo: "created_at", de: Number(j.carga_de), ate: Number(j.carga_ate) });
+    lote = { ate: Number(j.ate), carga_de: j.carga_de ?? null, leads: await lerLeads(clienteKommo(sub, token), faixas, chave),
+      vendas: await lerVendas(url, chave) };
   } catch (e) {
     const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
     log("leitura_falhou", { tarefa, erro });

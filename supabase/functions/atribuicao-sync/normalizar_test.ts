@@ -40,11 +40,31 @@ Deno.test("leitura dos leads: só GET, telefone sai como código, nada de telefo
       return { _embedded: { contacts: [{ id: 5, name: "Fulano", custom_fields_values: [{ field_code: "PHONE", values: [{ value: "(13) 99649-9669" }] }] }] } }; }
     return null;
   };
-  const r = await lerLeads(buscar as never, 1, 2, chave);
+  const r = await lerLeads(buscar as never, [{ campo: "updated_at", de: 1, ate: 2 }, { campo: "created_at", de: 1, ate: 2 }], chave);
   igual(r.length, 2);
   igual(/^[0-9a-f]{64}$/.test(String(r[0].tel_hash)), true);
   igual(r[1].tel_hash, null);
   igual([r[0].responsavel_id, r[1].responsavel_id], [901, null]);
   igual(JSON.stringify(r).match(/Fulano|9649|99649/), null);
+});
+Deno.test("duas faixas (o que mudou + pedaço do histórico) não repetem o mesmo lead", async () => {
+  const chave = await importarChave("c".repeat(40));
+  const filtros: string[] = [];
+  const buscar = async (c: string, p: [string, string][]) => {
+    if (c === "leads") { filtros.push(p.map(([k]) => k).find((k) => k.startsWith("filter["))!);
+      return { _embedded: { leads: [{ id: 10, pipeline_id: 7, created_at: 1792000000, _embedded: { contacts: [] } }] } }; }
+    return null;
+  };
+  const r = await lerLeads(buscar as never, [{ campo: "updated_at", de: 1, ate: 2 }, { campo: "created_at", de: 1, ate: 2 }], chave);
+  igual([r.length, filtros], [1, ["filter[updated_at][from]", "filter[created_at][from]"]]);
+});
+Deno.test("Kommo: conexão que cai é tentada de novo; recusa definitiva vira erro", async () => {
+  const { clienteKommo } = await import("./sync.ts");
+  let n = 0;
+  const f = (() => { n++; if (n < 3) return Promise.reject(new Error("http2 error: connection reset")); return Promise.resolve(Response.json({ ok: 1 })); }) as typeof fetch;
+  igual(await clienteKommo("idealize", "t", f)("account", []), { ok: 1 });
+  const nega = (() => Promise.resolve(new Response("x", { status: 401 }))) as typeof fetch;
+  let e = ""; try { await clienteKommo("idealize", "t", nega)("account", []); } catch (x) { e = String(x); }
+  igual(e.includes("HTTP 401"), true);
 });
 Deno.test("comparação de segredo", () => { igual(iguais("abc", "abc"), true); igual(iguais("abc", "abd"), false); });

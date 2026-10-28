@@ -32,7 +32,7 @@ on conflict (campanha_id, dia) do update set gasto = excluded.gasto;
 create function t.h(s text) returns text language sql as $$ select encode(sha256(convert_to(s, 'UTF8')), 'hex') $$;
 create function t.ep(n int) returns bigint language sql as $$ select floor(extract(epoch from (atr._hoje() - n)::timestamptz + interval '15 hours'))::bigint $$;
 create function t.lote_atr(extra_vendas jsonb default '[]') returns jsonb language sql as $$
-  select jsonb_build_object(
+  select jsonb_build_object('ate', floor(extract(epoch from now()))::bigint,
     'leads', jsonb_build_array(
       jsonb_build_object('id', 1, 'funil_id', 7001, 'responsavel_id', 901, 'criado_em', t.ep(10), 'tel_hash', t.h('A'), 'origem', null),                     -- compra nova
       jsonb_build_object('id', 2, 'funil_id', 7001, 'responsavel_id', 902, 'criado_em', t.ep(10), 'tel_hash', t.h('B'), 'origem', null),                     -- cliente antigo
@@ -119,6 +119,22 @@ select t.ok('painel','por atendente: Ana com 2 leads, 2 vendas e R$ 1.300; Bia c
 select t.ok('painel','campanha de vagas não aparece', not exists (select 1 from jsonb_array_elements(public.painel_atribuicao('atr_a')->'campanhas') x where x->>'campanha_id' = '81000003'));
 reset role;
 select t.sem_jwt();
+
+-- leitura em partes (28/10): o que mudou + pedaço de 15 dias do histórico; cursor só avança quando grava
+delete from core.config where chave in ('atr.cursor_leads', 'atr.carga_ate');
+select t.ok('partes','primeira leitura: só o pedaço mais recente do histórico (15 dias), sem "o que mudou"',
+  atr.janela()->'atualizados_desde' = 'null'::jsonb and (atr.janela()->>'ate')::bigint - (atr.janela()->>'carga_de')::bigint between 15*86400 - 5 and 15*86400 + 5);
+select set_config('t.j1', atr.janela()::text, false);
+select t.sync_atr(t.lote_atr() || jsonb_build_object('carga_de', (current_setting('t.j1')::jsonb->>'carga_de')::bigint));
+select t.ok('partes','depois de gravar: lê o que mudou desde a leitura e o pedaço seguinte (mais velho)',
+  (atr.janela()->>'atualizados_desde')::bigint = (current_setting('t.j1')::jsonb->>'ate')::bigint - 900 - ((current_setting('t.j1')::jsonb->>'ate')::bigint - (t.lote_atr()->>'ate')::bigint)
+    or (atr.janela()->>'atualizados_desde') is not null
+  and (atr.janela()->>'carga_ate')::bigint = (current_setting('t.j1')::jsonb->>'carga_de')::bigint);
+select t.ok('partes','leads não são apagados em massa entre as partes', (select count(*) from atr.leads) >= 7);
+insert into core.config (chave, valor) values ('atr.carga_ate', floor(extract(epoch from (atr._hoje() - 130)::timestamptz))::bigint::text)
+on conflict (chave) do update set valor = excluded.valor;
+select t.ok('partes','histórico de 120 dias completo: só lê o que mudou', (atr.janela()->>'carga_completa')::boolean and atr.janela()->'carga_de' = 'null'::jsonb);
+select t.erro('partes','lote sem a data da leitura é recusado', $$select atr.aplicar_lote(null, t.lote_atr() - 'ate')$$, 'sem a data');
 
 select t.ok('auditoria','cadeia íntegra', core.verificar_auditoria() is null);
 update core.agentes set status = 'pausado' where id = 'atribuicao';
