@@ -141,6 +141,17 @@ update fin.envios set status = 'lancado' where id = t.id('t.e9');
 select t.ok('validador','documento da IA marcado como lançado sem pessoa: conferente reprova',
   (select fin.validar_envio(tarefa_id, 'validador_sql') from fin.envios where id = t.id('t.e9')) = 'bloqueada');
 
+-- pagamento da fatura anterior não entra na soma (achado no 1º PDF real, 28/10)
+select t.ok('fatura','compras somam o total; linha de pagamento da fatura anterior fica fora e a conta fecha',
+  (fin._checar_leitura('fatura', jsonb_build_object('total', 4165.55, 'compras', jsonb_build_array(
+     jsonb_build_object('data','2026-09-13','descricao','Apple Com/bill','valor', 799.90),
+     jsonb_build_object('data','2026-10-05','descricao','Mercadolivre','valor', 3365.65),
+     jsonb_build_object('data','2026-09-25','descricao','Pagamento 030932721','valor', -2685.93)))))->>'ok' = 'true');
+select t.ok('fatura','estorno de compra continua contando (não é pagamento)',
+  (fin._checar_leitura('fatura', jsonb_build_object('total', 100, 'compras', jsonb_build_array(
+     jsonb_build_object('data','2026-09-13','descricao','Loja X','valor', 130),
+     jsonb_build_object('data','2026-09-20','descricao','Estorno Loja X','valor', -30)))))->>'ok' = 'true');
+
 -- arquivos esperados: o que não chegou aparece (e o Supervisor cobra)
 insert into fin.arquivos_esperados (unidade_id, tipo, conta_id, frequencia, dia_limite, hora_limite, dias) values
   ('env_a', 'extrato', 'env_cc', 'diaria', null, 0, '1,2,3,4,5,6,7'),
