@@ -145,10 +145,14 @@ select t.ok('validador','documento da IA marcado como lançado sem pessoa: confe
 insert into fin.arquivos_esperados (unidade_id, tipo, conta_id, frequencia, dia_limite, hora_limite, dias) values
   ('env_a', 'extrato', 'env_cc', 'diaria', null, 0, '1,2,3,4,5,6,7'),
   ('env_a', 'fatura', 'env_cart', 'mensal', 1, 0, '1,2,3,4,5'),
-  ('env_b', 'stone', null, 'semanal', 1, 0, '1,2,3,4,5');
+  ('env_b', 'stone', null, 'semanal', 1, 0, '1,2,3,4,5'),
+  ('env_b', 'extrato', 'env_cc_b', 'semanal', 1, 0, '1,2,3,4,5');
 select t.ok('esperados','extrato de ontem chegou (OFX): não cobra; Stone da outra loja não chegou: cobra',
   not exists (select 1 from fin.arquivos_faltando() where unidade_id = 'env_a' and tipo = 'extrato')
   and exists (select 1 from fin.arquivos_faltando() where unidade_id = 'env_b' and tipo = 'stone' and descricao like 'Relatório da Stone (Loja Outra): falta o da semana%'));
+-- conta sem envio na semana: confere as importações daquela conta (achado na instalação, 28/10: nome de coluna ambíguo)
+select t.ok('esperados','extrato semanal de conta sem nenhum envio nem importação: cobra',
+  exists (select 1 from fin.arquivos_faltando() where unidade_id = 'env_b' and tipo = 'extrato' and conta_id = 'env_cc_b'));
 update core.agentes set status = 'ativo' where id = 'supervisor';
 update core.config set valor = 'true' where chave = 'sup.sync.ativo';
 select t.sup();
