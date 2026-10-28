@@ -120,6 +120,28 @@ select t.ok('painel','campanha de vagas não aparece', not exists (select 1 from
 reset role;
 select t.sem_jwt();
 
+-- funil sem loja (pré-vendas): casa com a venda do mesmo telefone em qualquer loja; lead conta para a loja da compra
+insert into com.funis (id, nome, unidade_id) values (7003, 'Funil Pré-vendas (sem loja)', null) on conflict (id) do update set unidade_id = null;
+select t.sync_atr(t.lote_atr(jsonb_build_array(
+  jsonb_build_object('id', 'os9', 'unidade', 'sorocaba', 'dia', atr._hoje() - 2, 'tipo', 'venda', 'valor', 450, 'tel_hash', t.h('F'))))
+  || jsonb_build_object('leads', t.lote_atr()->'leads' || jsonb_build_array(
+     jsonb_build_object('id', 8, 'funil_id', 7003, 'responsavel_id', 902, 'criado_em', t.ep(6), 'tel_hash', t.h('F'), 'origem', null),
+     jsonb_build_object('id', 9, 'funil_id', 7003, 'criado_em', t.ep(6), 'tel_hash', t.h('G'), 'origem', null))));
+select t.ok('sem_loja','lead de funil sem loja casa com a venda em Sorocaba e conta para Sorocaba',
+  exists (select 1 from atr.conversoes where lead_id = 8 and venda_id = 'os9' and unidade_id = 'sorocaba' and valor = 450));
+select t.ok('sem_loja','funil COM loja continua casando só com a própria loja (lead 6 não casa com venda de Sorocaba)',
+  not exists (select 1 from atr.conversoes where lead_id = 6));
+select t.ok('sem_loja','conferente aprova a regra nova', (select resultado from core.validacoes order by id desc limit 1) = 'aprovada');
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select set_config('t.ps', public.painel_atribuicao('sorocaba')::text, false);
+select set_config('t.pg', public.painel_atribuicao()::text, false);
+reset role;
+select t.sem_jwt();
+select t.ok('sem_loja','painel: Sorocaba ganha o lead da pré-vendas que comprou lá; o que não comprou aparece em "leads sem loja"',
+  (select (x->>'faturamento')::numeric >= 450 from jsonb_array_elements(current_setting('t.ps')::jsonb->'lojas') x where x->>'unidade_id' = 'sorocaba')
+  and (current_setting('t.pg')::jsonb->>'leads_sem_loja')::int >= 1, current_setting('t.pg')::jsonb->>'leads_sem_loja');
+
 -- leitura em partes (28/10): o que mudou + pedaço de 15 dias do histórico; cursor só avança quando grava
 delete from core.config where chave in ('atr.cursor_leads', 'atr.carga_ate');
 select t.ok('partes','primeira leitura: só o pedaço mais recente do histórico (15 dias), sem "o que mudou"',
