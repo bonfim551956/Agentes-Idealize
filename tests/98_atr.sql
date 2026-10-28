@@ -158,6 +158,15 @@ on conflict (chave) do update set valor = excluded.valor;
 select t.ok('partes','histórico de 120 dias completo: só lê o que mudou', (atr.janela()->>'carga_completa')::boolean and atr.janela()->'carga_de' = 'null'::jsonb);
 select t.erro('partes','lote sem a data da leitura é recusado', $$select atr.aplicar_lote(null, t.lote_atr() - 'ate')$$, 'sem a data');
 
+-- fila: com uma leitura esperando, a rodada usa essa em vez de criar outra (achado na 1ª verificação do Supervisor, 28/10)
+update core.config set valor = 'true' where chave = 'atr.sync.ativo';
+select set_config('t.f1', atr.agendar_sincronizacao()::text, false);
+update core.tarefas set chave_idempotencia = chave_idempotencia || ':antiga' where id = current_setting('t.f1')::uuid;
+select t.ok('fila','com leitura esperando, não cria outra tarefa',
+  atr.agendar_sincronizacao() = current_setting('t.f1')::uuid
+  and (select count(*) from core.tarefas where agente_id = 'atribuicao' and status in ('pronta','executando','validando')) = 1);
+update core.tarefas set status = 'cancelada', motivo = 'teste' where id = current_setting('t.f1')::uuid;
+
 select t.ok('auditoria','cadeia íntegra', core.verificar_auditoria() is null);
 update core.agentes set status = 'pausado' where id = 'atribuicao';
 update core.config set valor = 'false' where chave = 'atr.sync.ativo';

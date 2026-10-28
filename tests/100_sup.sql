@@ -285,6 +285,17 @@ select t.ok('painel','amostra mais recente aparece no agente', (select x->'amost
 reset role;
 select t.sem_jwt();
 
+-- Financeiro tem dois trabalhos: basta um ligado para não ser "pela metade" (achado na 1ª verificação, 28/10)
+update core.agentes set status = 'ativo' where id = 'financeiro';
+update core.config set valor = 'false' where chave = 'fin.whatsapp.ativo';
+update core.config set valor = 'true' where chave = 'fin.envios.ativo';
+select t.ok('saude','Financeiro com só a leitura de arquivos ligada está ligado',
+  (select sync_ativo from sup.v_saude where agente_id = 'financeiro'));
+update core.config set valor = 'false' where chave = 'fin.envios.ativo';
+select t.ok('saude','Financeiro ativo com tudo desligado continua "pela metade"',
+  not (select sync_ativo from sup.v_saude where agente_id = 'financeiro'));
+update core.agentes set status = 'pausado' where id = 'financeiro';
+
 select t.ok('auditoria','cadeia íntegra', core.verificar_auditoria() is null);
 update sup.achados set status = 'resolvido', resolvido_em = now() where status = 'aberto';
 update core.agentes set status = 'pausado' where id = 'supervisor';
