@@ -93,6 +93,10 @@ select t.ok('resolucao','validação da leitura seguinte aprovou', current_setti
 select t.ok('janela','próxima janela continua de onde parou (com sobreposição de 10 min)',
   (com.proxima_janela()->>'desde')::bigint = (current_setting('t.c3')::jsonb->>'ate')::timestamptz::date - '1970-01-01'::date
   or abs((com.proxima_janela()->>'desde')::bigint - (extract(epoch from (current_setting('t.c3')::jsonb->>'ate')::timestamptz) - 600)) < 2);
+-- pedaço configurável (achado ao ligar, 28/10: mais de 5 mil mensagens em 3 dias)
+update core.config set valor = '12' where chave = 'com.sync.janela_horas';
+select t.ok('janela','cada leitura cobre no máximo o pedaço configurado (12 h)',
+  (com.proxima_janela()->>'ate')::bigint - (com.proxima_janela()->>'desde')::bigint <= 12 * 3600);
 
 -- D. Validador e atomicidade
 do $$
