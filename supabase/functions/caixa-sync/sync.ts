@@ -2,6 +2,7 @@
 // Asaas só GET em /payments. Só roda com: segredo do worker, cx.sync.ativo = true, agente ATIVO e credencial do ADM.
 import postgres from "npm:postgres@3.4.5";
 import { diaAdm, pagamentoAdm, recebimentosAsaas, tokensAsaas, type Obj } from "./normalizar.ts";
+import { semSegredo } from "./segredo.ts";
 
 const EXECUTOR = "caixa-sync";
 const VALIDADOR = "validador_sql";
@@ -86,7 +87,7 @@ export async function executar(): Promise<Record<string, unknown>> {
     }
     lote = { desde, ate, adm: { dias: adm.dias.flatMap((x) => diaAdm(x) ?? []), pagamentos: adm.pagamentos.flatMap((x) => pagamentoAdm(x) ?? []) }, asaas };
   } catch (e) {
-    const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
+    const erro = semSegredo(e).slice(0, 300);
     log("leitura_falhou", { tarefa, erro });
     await db()`select core.registrar_execucao(${tarefa}::uuid, ${EXECUTOR}, 'erro', null, null, ${"leitura: " + erro})`;
     return { tarefa, status: "erro_leitura" };

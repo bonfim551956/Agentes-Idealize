@@ -3,6 +3,7 @@
 // agente ATIVO, chave do telefone (ATR_CHAVE_TELEFONE), token da Kommo e leitura do ADM.
 import postgres from "npm:postgres@3.4.5";
 import { codigoTelefone, contatoPrincipal, importarChave, origemLead, telefonesContato, type Obj } from "./normalizar.ts";
+import { semSegredo } from "./segredo.ts";
 
 const EXECUTOR = "atribuicao-sync";
 const VALIDADOR = "validador_sql";
@@ -30,7 +31,7 @@ export function clienteKommo(subdominio: string, token: string, f: typeof fetch 
         r = await f(u, { method: "GET", headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal: AbortSignal.timeout(30_000) });
       } catch (e) {   // conexão caiu / demorou: tenta de novo com espera crescente
         if (tentativa < 3) { await espera(2000 * 2 ** tentativa); continue; }
-        throw new Error(`Kommo ${caminho}: conexão falhou depois de 4 tentativas (${String(e instanceof Error ? e.message : e).slice(0, 80)})`);
+        throw new Error(`Kommo ${caminho}: conexão falhou depois de 4 tentativas (${semSegredo(e).slice(0, 80)})`);
       }
       if (r.status === 204) return null;
       if ((r.status === 429 || r.status >= 500) && tentativa < 3) { await r.body?.cancel(); await espera(2000 * 2 ** tentativa); continue; }
@@ -119,7 +120,7 @@ export async function executar(): Promise<Record<string, unknown>> {
     lote = { ate: Number(j.ate), carga_de: j.carga_de ?? null, leads: await lerLeads(clienteKommo(sub, token), faixas, chave),
       vendas: await lerVendas(url, chave) };
   } catch (e) {
-    const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
+    const erro = semSegredo(e).slice(0, 300);
     log("leitura_falhou", { tarefa, erro });
     await db()`select core.registrar_execucao(${tarefa}::uuid, ${EXECUTOR}, 'erro', null, null, ${"leitura: " + erro})`;
     return { tarefa, status: "erro_leitura" };

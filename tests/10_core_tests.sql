@@ -224,6 +224,24 @@ do $$ declare a uuid; x core.tarefas; r text; begin
   perform t.ok('retentativa','esgotou tentativas → falhou', r='falhou', r);
   perform t.ok('retentativa','falha repetida abre incidente', exists (select 1 from core.incidentes where chave_agrupamento='falha:teste:lanc'));
 end $$;
+-- nenhuma senha/token em erro gravado (achado 28/10: endereço do RH com a senha foi parar na tarefa e no incidente)
+do $$ declare a uuid; x core.tarefas; r text; seg text := 'Abc123SenhaSecreta987'; begin
+  a := core.criar_tarefa('00000000-0000-0000-0000-00000000000d','teste','segredo','fin.lanc','registrar','loja_a','{"k":"d5"}','idem-0205',10);
+  update core.tarefas set max_tentativas = 1 where id = a;
+  select * into x from core.reivindicar('teste','w1',60);
+  r := core.registrar_execucao(a,'w1','erro',null,null,
+    'Invalid URL: ''postgresql://leitor.ref:' || seg || '@aws-1-sa-east-1.pooler.supabase.com: 5432/postgres'' password=' || seg || ' Bearer ' || seg);
+  perform t.ok('segredo','erro com endereço, password= e Bearer: senha não fica na tarefa',
+    (select motivo from core.tarefas where id = a) not like '%' || seg || '%' and (select motivo from core.tarefas where id = a) like '%[endereço]%',
+    (select motivo from core.tarefas where id = a));
+  perform t.ok('segredo','nem na execução', not exists (select 1 from core.execucoes where tarefa_id = a and erro like '%' || seg || '%'));
+  perform t.ok('segredo','nem no incidente de falha',
+    not exists (select 1 from core.incidentes where detalhes::text like '%' || seg || '%'));
+  perform t.ok('segredo','senha com espaço também some', core._sem_segredo('x postgresql://u.r:abc def ghi@h:5432/p y') = 'x [endereço] y',
+    core._sem_segredo('x postgresql://u.r:abc def ghi@h:5432/p y'));
+  perform t.ok('segredo','erro comum continua legível', core._sem_segredo('HTTP 503 antes de enviar') = 'HTTP 503 antes de enviar');
+end $$;
+
 select t.erro('execucao','outro executor não registra resultado de tarefa alheia',
   $q$select core.registrar_execucao(current_setting('t.d1')::uuid,'intruso','sucesso')$q$);
 

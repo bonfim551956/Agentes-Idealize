@@ -2,6 +2,7 @@
 // Só roda com: segredo do worker, chave lab.sync.ativo = true, agente ATIVO e credencial de leitura do ADM.
 import postgres from "npm:postgres@3.4.5";
 import { normalizar } from "./normalizar.ts";
+import { semSegredo } from "./segredo.ts";
 
 const EXECUTOR = "lab-sync";
 const VALIDADOR = "validador_sql";
@@ -43,7 +44,7 @@ export async function executar(ler = lerAdm): Promise<Record<string, unknown>> {
   try {
     linhas = (await ler(url)).map(normalizar);
   } catch (e) {
-    const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
+    const erro = semSegredo(e).slice(0, 300);
     log("leitura_falhou", { tarefa, erro });
     // nada foi gravado: erro seguro, com nova tentativa e espera
     await db()`select core.registrar_execucao(${tarefa}::uuid, ${EXECUTOR}, 'erro', null, null, ${"leitura do ADM: " + erro})`;

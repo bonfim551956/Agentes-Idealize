@@ -2,6 +2,7 @@
 // Só roda com: segredo do worker, rh.sync.ativo = true, agente ATIVO e credencial de leitura do RH 360.
 import postgres from "npm:postgres@3.4.5";
 import { normalizar, type Obj } from "./normalizar.ts";
+import { semSegredo } from "./segredo.ts";
 
 const EXECUTOR = "rh-sync";
 const VALIDADOR = "validador_sql";
@@ -50,7 +51,7 @@ export async function executar(): Promise<Record<string, unknown>> {
   try {
     lote = await lerRh(url);
   } catch (e) {
-    const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
+    const erro = semSegredo(e).slice(0, 300);
     log("leitura_falhou", { tarefa, erro });
     await db()`select core.registrar_execucao(${tarefa}::uuid, ${EXECUTOR}, 'erro', null, null, ${"leitura do RH 360: " + erro})`;
     return { tarefa, status: "erro_leitura" };

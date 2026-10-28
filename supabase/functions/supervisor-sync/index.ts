@@ -1,5 +1,6 @@
 // Ponto de entrada: só serve. A lógica está em sync.ts / fontes.ts / aviso.ts.
 import { executar, iguais } from "./sync.ts";
+import { semSegredo } from "./segredo.ts";
 
 Deno.serve(async (req) => {
   const chave = Deno.env.get("SUP_WORKER_SECRET");
@@ -8,7 +9,7 @@ Deno.serve(async (req) => {
   try {
     return Response.json(await executar());
   } catch (e) {
-    console.error(JSON.stringify({ app: "supervisor-sync", erro: String(e) }));
+    console.error(JSON.stringify({ app: "supervisor-sync", erro: semSegredo(e) }));
     return Response.json({ erro: "falha interna" }, { status: 500 });
   }
 });

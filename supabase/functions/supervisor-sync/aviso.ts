@@ -1,4 +1,6 @@
 // Supervisor — envio do aviso pelo Z-API (texto). Só para os destinos que o banco devolve (sup.destinos()).
+import { semSegredo } from "./segredo.ts";
+
 export type Zapi = { instancia: string; token: string; clientToken: string };
 
 export function configZapi(env: (k: string) => string | undefined): Zapi | null {
@@ -20,7 +22,7 @@ export async function enviar(z: Zapi, destinos: string[], texto: string, f: type
       if (!r.ok) erros.push(`HTTP ${r.status}`);
       await r.body?.cancel();
     } catch (e) {
-      erros.push(String(e instanceof Error ? e.message : e).slice(0, 80));
+      erros.push(semSegredo(e).slice(0, 80));
     }
   }
   return erros.length ? { ok: false, erro: `${erros.length} de ${validos.length} falharam: ${erros.join("; ")}` } : { ok: true };

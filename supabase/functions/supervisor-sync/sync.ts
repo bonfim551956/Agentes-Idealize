@@ -4,6 +4,7 @@
 import postgres from "npm:postgres@3.4.5";
 import { itensLab, lerAsaas, lerKommo, tokensAsaas, type Item, type Obj } from "./fontes.ts";
 import { configZapi, enviar } from "./aviso.ts";
+import { semSegredo } from "./segredo.ts";
 
 const EXECUTOR = "supervisor-sync";
 const VALIDADOR = "validador_sql";
@@ -49,7 +50,7 @@ async function amostras(): Promise<{ lote: Record<string, Item[]>; pulos: Record
       if (!leitura) { pulos[agente] = "sem credencial de leitura"; continue; }
       lote[agente] = await leitura;
     } catch (e) {
-      pulos[agente] = "falha na leitura da fonte: " + String(e instanceof Error ? e.message : e).slice(0, 120);
+      pulos[agente] = "falha na leitura da fonte: " + semSegredo(e).slice(0, 120);
       log("amostra_falhou", { agente, erro: pulos[agente] });
     }
   }
@@ -68,7 +69,7 @@ export async function executar(): Promise<Record<string, unknown>> {
   try {
     am = await amostras();
   } catch (e) {
-    const erro = String(e instanceof Error ? e.message : e).slice(0, 300);
+    const erro = semSegredo(e).slice(0, 300);
     await db()`select core.registrar_execucao(${tarefa}::uuid, ${EXECUTOR}, 'erro', null, null, ${"amostragem: " + erro})`;
     return { tarefa, status: "erro" };
   }
