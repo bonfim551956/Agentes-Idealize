@@ -347,6 +347,10 @@ export const RPC: Record<string, unknown> = {
       { id: 1, tipo: "nao_encontrado", referencia: "sao_vicente:2026-10-23:pix", unidade_id: "sao_vicente", dia: "2026-10-23", aberto_em: ha(60),
         detalhe: { forma: "pix", rotulo: "Pix", fonte: "banco", quantidade: 2, valor: 200, valores: [100, 100] } },
       { id: 2, tipo: "caixa_nao_fechado", referencia: "sao_vicente:2026-10-22", unidade_id: "sao_vicente", dia: "2026-10-22", aberto_em: ha(600), detalhe: {} },
+      { id: 3, tipo: "sem_registro_no_caixa", referencia: "sao_vicente:2026-10-18:pix:extrato", unidade_id: "sao_vicente", dia: "2026-10-18", aberto_em: ha(60),
+        detalhe: { forma: "pix", rotulo: "Pix", quantidade: 1, valor: 720, valores: [720], dia_semana: "domingo", loja_fechada: true } },
+      { id: 4, tipo: "multi_divergente", referencia: "sao_vicente:2026-10-22", unidade_id: "sao_vicente", dia: "2026-10-22", aberto_em: ha(60),
+        detalhe: { caixa_vendas: 1000, multi_vendas: 900, diferenca: 100, parcelas_no_caixa: 0, dia_semana: "quinta" } },
     ],
   },
   painel_relatorio: {

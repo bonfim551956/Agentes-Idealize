@@ -12,8 +12,11 @@ const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   dinheiro_sem_deposito: { rotulo: "Dinheiro sem depósito", tom: "atencao" },
   caixa_inconsistente: { rotulo: "Total do caixa não bate", tom: "atencao" },
   extrato_atrasado: { rotulo: "Extrato atrasado", tom: "atencao" },
-  sem_registro_no_caixa: { rotulo: "Entrou no extrato e não está no caixa", tom: "neutro" },
+  sem_registro_no_caixa: { rotulo: "Entrou e não está no caixa", tom: "critico" },
+  multi_divergente: { rotulo: "Multicrediário × caixa", tom: "critico" },
 };
+const SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const diaSemana = (iso: string) => SEMANA[new Date(iso + "T12:00:00").getDay()];
 const FONTE: Record<string, string> = { banco: "extrato do banco", asaas: "Asaas", stone: "Stone" };
 const valores = (v: unknown) => (Array.isArray(v) ? v.slice(0, 6).map((x) => dinheiro(Number(x))).join(", ") + (v.length > 6 ? "…" : "") : "");
 
@@ -21,7 +24,8 @@ function textoAlerta(a: CaixaPainel["alertas"][number]): string {
   const d = a.detalhe ?? {};
   switch (a.tipo) {
     case "nao_encontrado": return `${String(d.rotulo)}: ${numero(Number(d.quantidade))} ${Number(d.quantidade) === 1 ? "valor" : "valores"} (${valores(d.valores)}) registrados no caixa e não achados no ${FONTE[String(d.fonte)] ?? "extrato"}.`;
-    case "sem_registro_no_caixa": return `${String(d.rotulo)}: ${valores(d.valores)} entrou e não está em nenhum fechamento. Pode ser parcela, sinal ou lançamento esquecido.`;
+    case "sem_registro_no_caixa": return `${String(d.rotulo)}: ${valores(d.valores)} entrou e não está em nenhum fechamento.${d.loja_fechada ? " A loja não abre nesse dia da semana: confira em qual caixa o cliente foi atendido." : " Pode ser parcela, sinal ou pagamento que o cliente fez sem avisar."}`;
+    case "multi_divergente": return `Vendas aprovadas no Multicrediário somam ${dinheiro(Number(d.multi_vendas))} e o caixa lançou ${dinheiro(Number(d.caixa_vendas))} como Multicrediário${Number(d.parcelas_no_caixa) > 0 ? ` (fora ${dinheiro(Number(d.parcelas_no_caixa))} de parcelas recebidas na loja)` : ""}.`;
     case "caixa_nao_fechado": return "Não há fechamento de caixa registrado no sistema para este dia.";
     case "caixa_inconsistente": return `Total do caixa ${dinheiro(Number(d.caixa))}, soma das formas de pagamento ${dinheiro(Number(d.soma_formas))}.`;
     case "dinheiro_sem_deposito": return `${dinheiro(Number(d.dinheiro))} em dinheiro sem depósito registrado depois de ${String(d.prazo_dias)} dias.`;
@@ -74,7 +78,7 @@ export function Caixa() {
               {ligado
                 ? <>Conferindo três vezes por dia. Última conferência {relativo(c.sincronizacao.ultima?.em)}.</>
                 : <span className="font-bold">Agente desligado: os números abaixo são da última conferência{c.sincronizacao.ultima ? ` (${relativo(c.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
-              <p className="mt-1">Crédito e débito aguardam o arquivo da Stone; Multicrediário e Brasilcard ainda não têm conferência automática.</p>
+              <p className="mt-1">Crédito e débito: pelo arquivo da Stone. Multicrediário: pelas vendas aprovadas lidas no Multicrediário (São Vicente). Brasilcard ainda sem conferência automática.</p>
             </div>
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
@@ -108,7 +112,8 @@ export function Caixa() {
                       <Painel className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <Etiqueta tom={ALERTA[a.tipo]?.tom}>{ALERTA[a.tipo]?.rotulo ?? a.tipo}</Etiqueta>
-                          <p className="mt-1 font-bold">{rotuloUnidade(a.unidade_id, eu.unidades)}{a.dia ? `, ${data(a.dia)}` : ""}</p>
+                          <p className="mt-1 font-bold">{rotuloUnidade(a.unidade_id, eu.unidades)}{a.dia ? `, ${data(a.dia)} (${diaSemana(a.dia)})` : ""}
+                            {a.detalhe?.loja_fechada ? <Etiqueta tom="atencao" className="ml-2">loja fechada nesse dia</Etiqueta> : null}</p>
                           <p className="text-sm text-suave">{textoAlerta(a)}</p>
                         </div>
                       </Painel>

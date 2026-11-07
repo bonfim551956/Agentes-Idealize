@@ -54,6 +54,8 @@ echo "→ testes da origem das vendas"
 $P -f tests/108_origem.sql
 echo "→ testes da auditoria do atendimento"
 $P -f tests/109_aud.sql
+echo "→ testes do caixa (janela, Pix em dois, Multicrediário)"
+$P -f tests/110_cx_janela.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
