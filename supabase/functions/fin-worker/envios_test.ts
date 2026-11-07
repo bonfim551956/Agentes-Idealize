@@ -1,4 +1,4 @@
-import { detectarEnvio, lerOfx, lerRespostaEnvio, planilhaParaTexto, requisicaoEnvio } from "./envios.ts";
+import { detectarEnvio, juntarLeituras, LeituraInvalida, lerOfx, lerRespostaEnvio, planilhaParaTexto, requisicaoEnvio } from "./envios.ts";
 import * as XLSX from "npm:xlsx@0.18.5";
 
 const igual = (a: unknown, b: unknown) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`); };
@@ -64,4 +64,18 @@ Deno.test("resposta da IA: só os campos do tipo; categoria fora da lista vira n
     { data: null, descricao: "LOJA", valor: 50, parcela: null, categoria: null }] });
   let e = ""; try { lerRespostaEnvio({ content: [{ type: "text", text: "oi" }] }, new Set()); } catch (x) { e = String(x); }
   igual(e.includes("não devolveu"), true);
+});
+
+Deno.test("PDF lido em partes: extrato junta as linhas, saldo inicial da 1ª parte e final da última", () => {
+  const j = juntarLeituras([
+    { tipo: "extrato", formato: "ia", conta_numero: "74992-1", saldo_inicial: 100, saldo_final: 150, linhas: [{ data: "2026-10-01", valor: 50 }] },
+    { tipo: "extrato", formato: "ia", conta_numero: null, saldo_inicial: 150, saldo_final: 90, linhas: [{ data: "2026-10-31", valor: -60 }] },
+  ]);
+  igual(j.saldo_inicial, 100); igual(j.saldo_final, 90); igual(j.conta_numero, "74992-1");
+  igual((j.linhas as unknown[]).length, 2);
+});
+
+Deno.test("leitura cortada pelo limite vira erro em vez de sumir com as últimas linhas", () => {
+  let erro: unknown = null; try { lerRespostaEnvio({ stop_reason: "max_tokens", content: [] }, new Set()); } catch (e) { erro = e; }
+  igual(erro instanceof LeituraInvalida && String((erro as Error).message).includes("incompleta"), true);
 });

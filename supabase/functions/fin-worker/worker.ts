@@ -5,7 +5,8 @@
 import postgres from "npm:postgres@3.4.5";
 import { baixar, detectar, MidiaRecusada, sha256 } from "./midia.ts";
 import { IaSemExtracao, lerResposta, montarRequisicao } from "./ia.ts";
-import { detectarEnvio, LeituraInvalida, lerOfx, lerRespostaEnvio, planilhaParaTexto, requisicaoEnvio } from "./envios.ts";
+import { detectarEnvio, juntarLeituras, LeituraInvalida, lerOfx, lerRespostaEnvio, planilhaParaTexto, requisicaoEnvio } from "./envios.ts";
+import { PDFDocument } from "npm:pdf-lib@1.17.1";
 
 const EXECUTOR = "fin-worker";
 const VALIDADOR = "validador_sql";
@@ -37,7 +38,7 @@ async function chamarIa(req: unknown) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify(req), signal: AbortSignal.timeout(120_000),
+    body: JSON.stringify(req), signal: AbortSignal.timeout(180_000),
   });
   if (!r.ok) throw new Error(`Claude API ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return await r.json();
@@ -102,12 +103,23 @@ async function processarEnvio(t: { id: string; unidade_id: string }) {
         'hoje', (now() at time zone 'America/Sao_Paulo')::date,
         'categorias', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'nome', nome)), '[]') from fin.categorias where ativo and natureza = 'despesa')) as cfg`;
       const conteudo = d.formato === "planilha" ? planilhaParaTexto(bytes) : d.formato === "texto" ? new TextDecoder().decode(bytes).slice(0, 300_000) : bytes;
-      const resp = await chamarIa(requisicaoEnvio(cfg.modelo, d, conteudo, { tipo_declarado: e.tipo_declarado, nome: e.nome_arquivo,
-        hoje: String(cfg.hoje), categorias: cfg.categorias }));
-      const r = lerRespostaEnvio(resp, new Set((cfg.categorias as { id: string }[]).map((c) => c.id)));
-      leitura = r.leitura;
-      await db()`select core.registrar_custo('financeiro', 0, false, ${cfg.modelo}, ${t.id}::uuid, ${t.unidade_id},
-                 ${r.uso.entrada}, ${r.uso.saida}, 'envio_documento')`;
+      // PDF com mais de 3 páginas: lido em partes de 3 páginas (2 por vez) e as partes são juntadas
+      const pedacos = d.formato === "pdf" ? await partesPdf(bytes, 3) : [conteudo];
+      const cats = new Set((cfg.categorias as { id: string }[]).map((c) => c.id));
+      const partes: Record<string, unknown>[] = [];
+      for (let i = 0; i < pedacos.length; i += 2) {
+        const lote = await Promise.all(pedacos.slice(i, i + 2).map(async (pedaco, k) => {
+          const resp = await chamarIa(requisicaoEnvio(cfg.modelo, d, pedaco, { tipo_declarado: e.tipo_declarado,
+            nome: pedacos.length > 1 ? `${e.nome_arquivo} (parte ${i + k + 1} de ${pedacos.length})` : e.nome_arquivo,
+            hoje: String(cfg.hoje), categorias: cfg.categorias }));
+          const r = lerRespostaEnvio(resp, cats);
+          await db()`select core.registrar_custo('financeiro', 0, false, ${cfg.modelo}, ${t.id}::uuid, ${t.unidade_id},
+                     ${r.uso.entrada}, ${r.uso.saida}, 'envio_documento')`;
+          return r.leitura;
+        }));
+        partes.push(...lote);
+      }
+      leitura = juntarLeituras(partes);
     }
     const [{ r }] = await db()`select fin.envio_registrar_leitura(${t.id}::uuid, ${EXECUTOR}, ${db().json(leitura as any)}) as r`;
     const [{ v }] = await db()`select fin.validar_envio(${t.id}::uuid, ${VALIDADOR}) as v`;
@@ -118,6 +130,22 @@ async function processarEnvio(t: { id: string; unidade_id: string }) {
     await db()`select fin.envio_erro_leitura(${t.id}::uuid, ${EXECUTOR}, ${erro})`
       .catch((y) => log("registrar_erro_falhou", { tarefa: t.id, erro: String(y) }));
   }
+}
+
+// divide o PDF em arquivos de N páginas (o arquivo original fica intacto no storage)
+async function partesPdf(bytes: Uint8Array, porParte: number): Promise<Uint8Array[]> {
+  let doc: PDFDocument;
+  try { doc = await PDFDocument.load(bytes, { ignoreEncryption: true }); } catch { return [bytes]; }
+  const n = doc.getPageCount();
+  if (n <= porParte) return [bytes];
+  const saida: Uint8Array[] = [];
+  for (let i = 0; i < n; i += porParte) {
+    const novo = await PDFDocument.create();
+    const pags = await novo.copyPages(doc, Array.from({ length: Math.min(porParte, n - i) }, (_, k) => i + k));
+    pags.forEach((p) => novo.addPage(p));
+    saida.push(await novo.save());
+  }
+  return saida;
 }
 
 async function semRegistro(tarefa: string, motivo: string) {
