@@ -10,7 +10,13 @@ import { TelaCentral } from "./TelaCentral";
 import { CHAVE_RECUPERACAO, NovaSenha, lerRetornoDoEmail } from "./Recuperacao";
 import { Botao, ErroCaixa } from "../ui/base";
 
-const INATIVIDADE_MS = 30 * 60 * 1000; // sessão encerra após 30 min sem uso
+// Regras de sessão vêm do banco (tela Operação e integrações): padrão 12 h sem uso e senha + código a cada 7 dias.
+type Regras = { inatividade_horas: number; dias: number; pode_alterar: boolean };
+const CHAVE_ULTIMO_USO = "idealize-painel-ultimo-uso";
+const lerUltimoUso = () => { try { return Number(window.localStorage.getItem(CHAVE_ULTIMO_USO)) || null; } catch { return null; } };
+const gravarUltimoUso = (t: number | null) => {
+  try { if (t === null) window.localStorage.removeItem(CHAVE_ULTIMO_USO); else window.localStorage.setItem(CHAVE_ULTIMO_USO, String(t)); } catch { /* sem storage */ }
+};
 
 type Ctx = { eu: Eu; sair: () => Promise<void>; email: string | null };
 const SessaoCtx = createContext<Ctx | null>(null);
@@ -34,11 +40,13 @@ export function Sessao({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Session | null | undefined>(undefined);
   const [etapa, setEtapa] = useState<Etapa>({ e: "carregando" });
   const [aviso, setAviso] = useState<string | null>(null);
+  const regras = useRef<Regras>({ inatividade_horas: 12, dias: 7, pode_alterar: false });
   const recuperando = () => { try { return window.sessionStorage.getItem(CHAVE_RECUPERACAO) === "1"; } catch { return false; } };
 
   const qc = useQueryClient();
   const sair = useCallback(async () => {
     try { window.sessionStorage.removeItem(CHAVE_RECUPERACAO); } catch { /* sem storage */ }
+    gravarUltimoUso(null);
     await supabase.auth.signOut();
     qc.clear(); // nada do usuário anterior fica em memória
     setEtapa({ e: "entrar" });
@@ -74,13 +82,26 @@ export function Sessao({ children }: { children: ReactNode }) {
       if (!totp) { setEtapa({ e: "cadastrar_2fa" }); return; }
       if (nivel.currentLevel !== "aal2") { setEtapa({ e: "confirmar_2fa", fator: totp.id }); return; }
       if (recuperando()) { setEtapa({ e: "nova_senha" }); return; }
+      regras.current = await rpc<Regras>("painel_sessao_regras");
+      const agora = Date.now();
+      const ultimoUso = lerUltimoUso();
+      if (ultimoUso && agora - ultimoUso > regras.current.inatividade_horas * 3_600_000) {
+        await sair(); setAviso(`O painel ficou mais de ${regras.current.inatividade_horas} h sem uso. Entre de novo.`); return;
+      }
+      const codigoEm = Math.max(0, ...(nivel.currentAuthenticationMethods ?? [])
+        .flatMap((m) => (typeof m === "object" && m.method === "totp" ? [m.timestamp * 1000] : [])));
+      if (codigoEm && agora - codigoEm > regras.current.dias * 86_400_000) {
+        await sair(); setAviso(`Por segurança, a cada ${regras.current.dias} dias o painel pede a senha e o código de novo.`); return;
+      }
+      gravarUltimoUso(agora);
       const eu = await rpc<Eu>("painel_eu");
       setEtapa({ e: "pronto", eu });
     } catch (e) {
       const t = traduzir(e);
+      if (/entre de novo com a senha/i.test(t.message)) { await sair(); setAviso(t.message); return; }
       setEtapa(t.tipo === "acesso" ? { e: "sem_acesso", msg: t.message } : { e: "erro", msg: t.message });
     }
-  }, [sessao]);
+  }, [sessao, sair]);
 
   useEffect(() => { void avaliar(); }, [avaliar]);
 
@@ -88,10 +109,16 @@ export function Sessao({ children }: { children: ReactNode }) {
   const ultimo = useRef(Date.now());
   useEffect(() => {
     if (etapa.e !== "pronto") return;
-    const marcar = () => { ultimo.current = Date.now(); };
+    const marcar = () => {
+      const agora = Date.now();
+      if (agora - ultimo.current > 30_000) gravarUltimoUso(agora); // grava no aparelho no máximo a cada 30 s
+      ultimo.current = agora;
+    };
     const evts = ["pointerdown", "keydown", "scroll"] as const;
     evts.forEach((ev) => window.addEventListener(ev, marcar, { passive: true }));
-    const id = window.setInterval(() => { if (Date.now() - ultimo.current > INATIVIDADE_MS) void sair(); }, 30_000);
+    const id = window.setInterval(() => { if (Date.now() - ultimo.current > regras.current.inatividade_horas * 3_600_000) {
+      void sair().then(() => setAviso(`O painel ficou mais de ${regras.current.inatividade_horas} h sem uso. Entre de novo.`));
+    } }, 30_000);
     return () => { evts.forEach((ev) => window.removeEventListener(ev, marcar)); window.clearInterval(id); };
   }, [etapa.e, sair]);
 

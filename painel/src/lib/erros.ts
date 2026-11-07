@@ -11,6 +11,7 @@ export function traduzir(e: unknown): ErroPainel {
   const msg = String(err.message ?? e ?? "Erro desconhecido");
   if (/segundo fator|2FA/i.test(msg)) return new ErroPainel("Confirme o código do autenticador para continuar.", "2fa");
   if (/sem acesso ao painel/i.test(msg)) return new ErroPainel("Seu login ainda não foi liberado para o painel. Peça ao administrador para vincular seu e-mail.", "acesso");
+  if (/sessão expirada/i.test(msg)) return new ErroPainel("Por segurança, entre de novo com a senha e o código do autenticador.", "acesso");
   if (/JWT expired|não autenticado/i.test(msg)) return new ErroPainel("Sua sessão terminou. Entre de novo.", "acesso");
   if (/muitas requisições/i.test(msg)) return new ErroPainel("Muitas ações em pouco tempo. Aguarde um minuto e tente de novo.", "limite");
   if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return new ErroPainel("Sem conexão com o servidor. Verifique a internet e tente de novo.", "rede");

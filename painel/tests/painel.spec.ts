@@ -67,12 +67,28 @@ test.describe("entrada", () => {
     await expect(page.getByRole("alert")).toHaveText("O link de redefinição venceu ou já foi usado. Peça um novo.");
   });
 
+  test("continua logado ao reabrir o navegador (sessão guardada no aparelho)", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.addInitScript(() => { window.localStorage.setItem("idealize-painel-ultimo-uso", String(Date.now() - 60 * 60 * 1000)); });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
+    expect(chamadas.map((c) => c.fn)).toContain("painel_eu");
+  });
+
+  test("mais de 12 h sem uso pede login de novo, com aviso", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.addInitScript(() => { window.localStorage.setItem("idealize-painel-ultimo-uso", String(Date.now() - 13 * 60 * 60 * 1000)); });
+    await page.goto("/");
+    await expect(page.getByRole("alert")).toContainText("mais de 12 h sem uso");
+    expect(chamadas.map((c) => c.fn)).not.toContain("painel_eu");
+  });
+
   test("login sem vínculo vê aviso e não vê dados", async ({ page }) => {
     const chamadas = await instalar(page, { logado: "aal2", rpc: {
       painel_eu: () => ({ status: 403, body: { code: "42501", message: "usuário sem acesso ao painel" } }) } });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Acesso ainda não liberado" })).toBeVisible();
-    expect(chamadas.map((c) => c.fn)).toEqual(["painel_eu"]);
+    expect(chamadas.map((c) => c.fn)).toEqual(["painel_sessao_regras", "painel_eu"]);
   });
 });
 

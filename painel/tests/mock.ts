@@ -6,7 +6,8 @@ const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url")
 export const jwt = (aal: "aal1" | "aal2") =>
   `${b64({ alg: "HS256", typ: "JWT" })}.${b64({
     sub: "00000000-0000-0000-0000-0000000000d1", role: "authenticated", aal, exp: Math.floor(Date.now() / 1000) + 3600,
-    amr: aal === "aal2" ? [{ method: "password", timestamp: 1 }, { method: "totp", timestamp: 2 }] : [{ method: "password", timestamp: 1 }],
+    amr: aal === "aal2" ? [{ method: "password", timestamp: Math.floor(Date.now() / 1000) - 60 }, { method: "totp", timestamp: Math.floor(Date.now() / 1000) - 30 }]
+      : [{ method: "password", timestamp: Math.floor(Date.now() / 1000) - 60 }],
     email: "diego@teste.local", session_id: "s1",
   })}.assinatura`;
 
@@ -45,6 +46,7 @@ const tarefa = (id: string, status: string, extra: Record<string, unknown> = {})
 
 export const RPC: Record<string, unknown> = {
   painel_eu: EU_ADMIN,
+  painel_sessao_regras: { inatividade_horas: 12, dias: 7, pode_alterar: true },
   painel_resumo: {
     plataforma_pausada: false, agentes: { pausado: 1 }, tarefas: { concluida: 41, aguardando_aprovacao: 1, incerta: 1 },
     tarefas_24h: 6, atrasadas: 0, aprovacoes_pendentes: 1, incidentes: { alta: 1, baixa: 1 }, falhas_recorrentes: 0,
@@ -352,7 +354,7 @@ export async function instalar(page: Page, o: Opcoes = {}) {
   const comFator = o.comFator ?? true;
   let nivel: "aal1" | "aal2" = o.logado === "aal1" ? "aal1" : "aal2";
   if (o.logado) {
-    await page.addInitScript(([s]) => { window.sessionStorage.setItem("idealize-painel", s); }, [JSON.stringify(sessao(nivel, comFator))]);
+    await page.addInitScript(([s]) => { window.localStorage.setItem("idealize-painel", s); }, [JSON.stringify(sessao(nivel, comFator))]);
   }
   const json = (r: Route, body: unknown, status = 200) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 

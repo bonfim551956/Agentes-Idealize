@@ -347,6 +347,36 @@ select t.erro('acessos','limite por minuto bloqueia excesso', 'select public.pai
 reset role;
 update core.config set valor = '240' where chave = 'painel.limite_por_minuto';
 
+-- ---------------------------------------------------------------------------
+-- J. Sessão longa (pedido 07/11): 12 h sem uso, senha + código a cada 7 dias
+-- ---------------------------------------------------------------------------
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select t.ok('sessao','regras padrão: 12 h sem uso e 7 dias',
+  (public.painel_sessao_regras()->>'inatividade_horas')::int = 12 and (public.painel_sessao_regras()->>'dias')::int = 7
+  and (public.painel_sessao_regras()->>'pode_alterar')::boolean);
+select set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-00000000a001','aal','aal2','role','authenticated',
+  'amr', json_build_array(json_build_object('method','password','timestamp', extract(epoch from now() - interval '1 day')::bigint),
+                          json_build_object('method','totp','timestamp', extract(epoch from now() - interval '1 day')::bigint)))::text, false);
+select t.ok('sessao','código confirmado há 1 dia: entra', public.painel_resumo() is not null);
+select set_config('request.jwt.claims', json_build_object('sub','00000000-0000-0000-0000-00000000a001','aal','aal2','role','authenticated',
+  'amr', json_build_array(json_build_object('method','totp','timestamp', extract(epoch from now() - interval '8 days')::bigint)))::text, false);
+select t.erro('sessao','código confirmado há 8 dias: pede login de novo', 'select public.painel_resumo()', 'sessão expirada');
+select t.ok('sessao','regras continuam legíveis para a tela saber o que fazer', public.painel_sessao_regras() is not null);
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select t.erro('sessao','tempo sem uso fora da faixa é recusado', $q$select public.painel_sessao_definir(100, 7, 'teste da faixa')$q$, 'entre 1 e 72');
+select t.erro('sessao','dias fora da faixa é recusado', $q$select public.painel_sessao_definir(12, 60, 'teste da faixa')$q$, 'entre 1 e 30');
+select public.painel_sessao_definir(24, 30, 'quero ficar mais tempo logado');
+select t.ok('sessao','admin altera os tempos pelo painel', (public.painel_sessao_regras()->>'inatividade_horas')::int = 24
+  and (public.painel_sessao_regras()->>'dias')::int = 30);
+select t.jwt('00000000-0000-0000-0000-00000000a002');
+select t.erro('sessao','gerente de loja não altera os tempos', $q$select public.painel_sessao_definir(12, 7, 'tentando mudar')$q$);
+select t.ok('sessao','gerente lê as regras mas não pode alterar', not (public.painel_sessao_regras()->>'pode_alterar')::boolean);
+reset role;
+select t.ok('sessao','mudança fica na auditoria', exists (select 1 from core.auditoria where acao = 'painel_sessao_definida'));
+update core.config set valor = '12' where chave = 'painel.sessao_inatividade_horas';
+update core.config set valor = '7' where chave = 'painel.sessao_dias';
+
 select t.ok('auditoria','cadeia íntegra ao final', core.verificar_auditoria() is null);
 select t.sem_jwt();
 

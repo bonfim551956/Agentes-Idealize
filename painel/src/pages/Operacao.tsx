@@ -1,7 +1,52 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { rpc, type Operacao as O } from "../lib/api";
 import { dataHora, relativo, STATUS_INTEGRACAO } from "../lib/format";
-import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, td, th } from "../ui/base";
+import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, entradaCls, td, th } from "../ui/base";
+import { Confirmar } from "../ui/Confirmar";
+
+type Regras = { inatividade_horas: number; dias: number; pode_alterar: boolean };
+
+// Quanto tempo o painel fica aberto sem pedir login de novo (pedido 07/11). Só quem administra altera.
+function SessaoPainel() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["sessao_regras"], queryFn: () => rpc<Regras>("painel_sessao_regras") });
+  const [horas, setHoras] = useState(12);
+  const [dias, setDias] = useState(7);
+  useEffect(() => { if (q.data) { setHoras(q.data.inatividade_horas); setDias(q.data.dias); } }, [q.data]);
+  if (q.isLoading) return <Carregando linhas={2} />;
+  if (q.error) return <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} />;
+  const r = q.data!;
+  const horasOk = Number.isInteger(horas) && horas >= 1 && horas <= 72;
+  const diasOk = Number.isInteger(dias) && dias >= 1 && dias <= 30;
+  const mudou = horas !== r.inatividade_horas || dias !== r.dias;
+  return (
+    <Secao titulo="Sessão do painel" descricao="Quanto tempo o painel fica aberto no mesmo aparelho sem pedir login de novo. O código do autenticador continua obrigatório.">
+      <Painel className="flex flex-col gap-4 p-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Campo id="s-horas" rotulo="Sair depois de quantas horas sem uso" ajuda="Entre 1 e 72 horas." erro={horasOk ? null : "Use um número entre 1 e 72."}>
+            <input id="s-horas" type="number" inputMode="numeric" min={1} max={72} className={entradaCls} disabled={!r.pode_alterar}
+              aria-invalid={!horasOk} value={Number.isNaN(horas) ? "" : horas} onChange={(e) => setHoras(e.target.valueAsNumber)} />
+          </Campo>
+          <Campo id="s-dias" rotulo="Pedir senha e código de novo a cada quantos dias" ajuda="Entre 1 e 30 dias, por aparelho." erro={diasOk ? null : "Use um número entre 1 e 30."}>
+            <input id="s-dias" type="number" inputMode="numeric" min={1} max={30} className={entradaCls} disabled={!r.pode_alterar}
+              aria-invalid={!diasOk} value={Number.isNaN(dias) ? "" : dias} onChange={(e) => setDias(e.target.valueAsNumber)} />
+          </Campo>
+        </div>
+        {r.pode_alterar ? (
+          <div>
+            <Confirmar gatilho={<Botao variante="primario" disabled={!mudou || !horasOk || !diasOk}>Salvar tempos</Botao>}
+              titulo="Alterar o tempo de sessão?" rotuloConfirmar="Salvar"
+              descricao={`O painel vai sair depois de ${horas} h sem uso e pedir senha e código a cada ${dias} dias. Vale para todos, a partir do próximo acesso.`}
+              motivo={{ rotulo: "Motivo da mudança", minimo: 5 }}
+              aoConfirmar={(m) => rpc("painel_sessao_definir", { p_inatividade_horas: horas, p_dias: dias, p_motivo: m })}
+              aoConcluir={() => { void qc.invalidateQueries({ queryKey: ["sessao_regras"] }); }} />
+          </div>
+        ) : <p className="text-sm text-suave">Só quem administra o painel altera esses tempos.</p>}
+      </Painel>
+    </Secao>
+  );
+}
 
 function Chave({ nome, ligado, explicacao }: { nome: string; ligado: boolean; explicacao: string }) {
   return (
@@ -29,6 +74,7 @@ export function Operacao() {
         </div>
         <p className="mt-4 text-sm text-suave">Os canais externos são ligados por mudança revisada no banco, não por botão, para que cada liberação tenha teste e registro.</p>
       </Secao>
+      <SessaoPainel />
       <Secao titulo="Integrações" descricao="Começam só com leitura; escrita é liberada depois de testada e aprovada.">
         <Tabela rotulo="Integrações">
           <thead><tr><th className={th}>Sistema</th><th className={th}>Estado</th><th className={th}>Escrita</th><th className={th}>Último ok</th><th className={th}>Observação</th></tr></thead>
