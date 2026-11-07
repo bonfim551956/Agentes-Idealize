@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -45,7 +45,9 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/enviar", rotulo: "Enviar arquivos", icone: <FileUp className={ic} /> },
     ] },
     { titulo: "Acompanhar", itens: [
+      ...(eu.pode.consultar_global ? [{ para: "/relatorio", rotulo: "Relatório do dia", icone: <Newspaper className={ic} /> }] : []),
       { para: "/", rotulo: "Visão geral", icone: <Gauge className={ic} /> },
+      ...(eu.pode.consultar_global ? [{ para: "/mercado", rotulo: "Mercado e concorrentes", icone: <Radar className={ic} /> }] : []),
       { para: "/tarefas", rotulo: "Tarefas", icone: <ListChecks className={ic} /> },
       { para: "/agentes", rotulo: "Agentes", icone: <Bot className={ic} /> },
       { para: "/financeiro", rotulo: "Financeiro por loja", icone: <Wallet className={ic} /> },

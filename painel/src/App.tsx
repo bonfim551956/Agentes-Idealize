@@ -24,6 +24,8 @@ import { Rh } from "./pages/Rh";
 import { Atribuicao } from "./pages/Atribuicao";
 import { Supervisor } from "./pages/Supervisor";
 import { Enviar } from "./pages/Enviar";
+import { Relatorio } from "./pages/Relatorio";
+import { Mercado } from "./pages/Mercado";
 
 const cliente = new QueryClient({
   defaultOptions: {
@@ -42,6 +44,8 @@ function Rotas() {
     <Shell>
       <Routes>
         <Route path="/" element={<VisaoGeral />} />
+        <Route path="/relatorio" element={<Relatorio />} />
+        <Route path="/mercado" element={<Mercado />} />
         <Route path="/aprovacoes" element={<Aprovacoes />} />
         <Route path="/tarefas" element={<Tarefas />} />
         <Route path="/tarefas/:id" element={<TarefaDetalhe />} />

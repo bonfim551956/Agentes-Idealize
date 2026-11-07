@@ -185,7 +185,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
+      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -374,5 +374,26 @@ test.describe("pendências resolvidas no card", () => {
     await page.getByRole("button", { name: "Manter todas" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_pendencia_decidir")?.corpo).toEqual(
       { p_pendencia: 34, p_decisao: "diferentes" });
+  });
+});
+
+test.describe("relatório do dia e concorrentes", () => {
+  test("relatório mostra prioridades, agentes, mercado e concorrentes", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/relatorio");
+    await expect(page.getByRole("heading", { name: "Relatório do dia" })).toBeVisible();
+    await expect(page.getByText("Óticas Gassi colocou 5 anúncio(s) novo(s) no ar")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Radar do Mercado" })).toBeVisible();
+    await expect(page.getByText("Fabricante lança lente para controle de miopia")).toBeVisible();
+  });
+
+  test("incluir concorrente pela tela", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/mercado");
+    await page.getByRole("button", { name: "Incluir concorrente" }).click();
+    await page.getByLabel("Nome do concorrente").fill("Ótica Nova");
+    await page.getByLabel("Instagram").fill("otica.nova");
+    await page.getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
   });
 });

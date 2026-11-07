@@ -74,7 +74,13 @@ select t.ok('alertas','cliente esperando há 60 min (limite 30) no lead 100', ex
 select t.ok('alertas','contato sem lead também conta como esperando', exists (select 1 from com.alertas where tipo = 'cliente_sem_resposta' and referencia = 'contact:555' and status = 'aberto'));
 select t.ok('alertas','conversa respondida não gera alerta de espera', not exists (select 1 from com.alertas where referencia = 'lead:101' and tipo = 'cliente_sem_resposta'));
 select t.ok('alertas','lead aberto sem responsável', exists (select 1 from com.alertas where tipo = 'lead_sem_responsavel' and referencia = 'lead:103' and status = 'aberto'));
-select t.ok('alertas','lead parado há 5 dias (limite 3)', exists (select 1 from com.alertas where tipo = 'lead_parado' and referencia = 'lead:104' and status = 'aberto'));
+select t.ok('alertas','lead aberto sem movimento mas sem mensagem do cliente NÃO é "parado" (calibrado 07/11)',
+  not exists (select 1 from com.alertas where tipo = 'lead_parado' and referencia = 'lead:104' and status = 'aberto'));
+insert into com.mensagens (evento_id, entidade_tipo, entidade_id, sentido, em) values ('t-parado-1', 'lead', 104, 'cliente', now() - interval '9 days');
+select com.recalcular_alertas();
+select t.ok('alertas','cliente falou há 9 dias e ninguém respondeu: lead parado (limite 7)',
+  exists (select 1 from com.alertas where tipo = 'lead_parado' and referencia = 'lead:104' and status = 'aberto'));
+
 select t.ok('alertas','lead ganho/perdido não fica parado', not exists (select 1 from com.alertas where referencia in ('lead:101','lead:102')));
 select t.ok('alertas','funis ainda sem loja sinalizados', (select count(*) from com.alertas where tipo = 'funil_sem_loja' and status = 'aberto') = 2);
 
