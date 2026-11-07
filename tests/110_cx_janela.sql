@@ -74,6 +74,20 @@ select t.ok('revisao','valor lançado na entrega acha o Pix pago dias antes',
 select t.ok('extrato','PDF lido com dias úteis vazios gera aviso',
   fin._checar_leitura('extrato', '{"formato":"ia","linhas":[{"data":"2026-10-26","valor":10},{"data":"2026-10-30","valor":5}]}')::text ~ '27/10, 28/10, 29/10');
 
+-- depósitos do dinheiro conferidos no extrato
+insert into cx.pagamentos (unidade_id, dia, origem, forma, valor) values
+  ('piracicaba', t.sab() + 2, 'venda', 'dinheiro', 350), ('piracicaba', t.sab() + 3, 'venda', 'dinheiro', 120), ('piracicaba', t.sab() + 4, 'venda', 'dinheiro', 80);
+insert into fin.movimentos (conta_id, data, sentido, valor, descricao, chave_dedup) values
+  ('teste_cxj_banco', t.sab() + 9, 'credito', 350, 'DEP DINHEIRO CAIXA AG-1', 'cxj-d1'),
+  ('teste_cxj_banco', t.sab() + 9, 'credito', 999, 'DEP DINHEIRO CAIXA AG-2', 'cxj-d2');
+select cx.recalcular();
+select t.ok('deposito','dinheiro do dia achado depositado dias depois no extrato',
+  exists (select 1 from cx.depositos_casados where unidade_id = 'piracicaba' and dia = t.sab() + 2));
+select t.ok('deposito','dinheiro sem depósito vira aviso; depósito sem caixa também',
+  exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo = 'deposito_nao_encontrado' and status = 'aberto' and dia = t.sab() + 3)
+  and exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo = 'deposito_sem_caixa' and status = 'aberto' and (detalhe->>'valor')::numeric = 999)
+  and not exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo = 'dinheiro_sem_deposito' and status = 'aberto'));
+
 update core.config set valor = '' where chave = 'cx.dias_sem_expediente';
 select grupo, teste, case when ok then 'PASS' else 'FAIL' end as r, left(coalesce(detalhe,''),160) as detalhe from t.resultados order by n;
 select count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from t.resultados;

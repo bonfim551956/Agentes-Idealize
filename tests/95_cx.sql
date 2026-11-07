@@ -91,7 +91,7 @@ select t.ok('alertas','Pix de 45 no banco sem registro no caixa; transferência 
 select t.ok('alertas','dia sem fechamento no ADM', exists (select 1 from cx.alertas where tipo = 'caixa_nao_fechado' and referencia = 'campinas:' || t.d(4) and status = 'aberto'));
 select t.ok('alertas','total do caixa (100) diferente da soma das formas (70)', exists (select 1 from cx.alertas where tipo = 'caixa_inconsistente'
   and referencia = 'campinas:' || t.d(5) and (detalhe->>'diferenca')::numeric = 30));
-select t.ok('alertas','dinheiro de 200 sem depósito', exists (select 1 from cx.alertas where tipo = 'dinheiro_sem_deposito' and referencia = 'campinas:' || t.d(6)));
+select t.ok('alertas','dinheiro de 200 sem depósito no extrato', exists (select 1 from cx.alertas where tipo = 'deposito_nao_encontrado' and referencia = 'campinas:' || t.d(6)));
 select t.ok('alertas','dia que bate não tem alerta', not exists (select 1 from cx.alertas where referencia like 'campinas:' || t.d(1) || '%'));
 
 -- C. Idempotência e resolução automática
@@ -99,10 +99,11 @@ select set_config('t.c2', t.sync_cx(t.lote_cx())::text, false);
 select t.ok('sync','mesmo lote: mesmos valores e alertas sem duplicar',
   (select count(*) from cx.pagamentos) = 10 and (select count(*) from cx.alertas where status = 'aberto' and tipo = 'nao_encontrado') = 2, current_setting('t.c2'));
 select t.mov(5, 999, 'RECEBIMENTO PIX-PIX_CRED 777 CLIENTE F');
+select t.mov(4, 200, 'DEP DINHEIRO CAIXA AG-123');
 select set_config('t.c3', t.sync_cx(t.lote_cx(com_dia4 => true, deposito => 200,
   extra_pag => jsonb_build_array(t.pg(6,'Pix',45))))::text, false);
 select t.ok('resolucao','Pix achado, dia fechado, depósito feito e Pix de 45 registrado: alertas resolvidos sozinhos',
-  not exists (select 1 from cx.alertas where status = 'aberto' and tipo in ('caixa_nao_fechado','dinheiro_sem_deposito','sem_registro_no_caixa'))
+  not exists (select 1 from cx.alertas where status = 'aberto' and tipo in ('caixa_nao_fechado','dinheiro_sem_deposito','deposito_nao_encontrado','sem_registro_no_caixa'))
   and not exists (select 1 from cx.alertas where status = 'aberto' and referencia = 'campinas:' || t.d(6) || ':pix')
   and exists (select 1 from cx.alertas where status = 'resolvido' and resolvido_por like 'agente_caixa%'), current_setting('t.c3'));
 select t.ok('resolucao','validação da leitura seguinte aprovou', current_setting('t.c3')::jsonb->>'validacao' = 'concluida');

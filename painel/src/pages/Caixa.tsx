@@ -14,6 +14,8 @@ const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   extrato_atrasado: { rotulo: "Extrato atrasado", tom: "atencao" },
   sem_registro_no_caixa: { rotulo: "Entrou e não está no caixa", tom: "critico" },
   multi_divergente: { rotulo: "Multicrediário × caixa", tom: "critico" },
+  deposito_nao_encontrado: { rotulo: "Dinheiro não depositado", tom: "critico" },
+  deposito_sem_caixa: { rotulo: "Depósito sem caixa", tom: "atencao" },
 };
 const SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const diaSemana = (iso: string) => SEMANA[new Date(iso + "T12:00:00").getDay()];
@@ -25,6 +27,8 @@ function textoAlerta(a: CaixaPainel["alertas"][number]): string {
   switch (a.tipo) {
     case "nao_encontrado": return `${String(d.rotulo)}: ${numero(Number(d.quantidade))} ${Number(d.quantidade) === 1 ? "valor" : "valores"} (${valores(d.valores)}) registrados no caixa e não achados no ${FONTE[String(d.fonte)] ?? "extrato"}.`;
     case "sem_registro_no_caixa": return `${String(d.rotulo)}: ${valores(d.valores)} entrou e não está em nenhum fechamento.${d.loja_fechada ? " A loja não abre nesse dia da semana: confira em qual caixa o cliente foi atendido." : " Pode ser parcela, sinal ou pagamento que o cliente fez sem avisar."}`;
+    case "deposito_nao_encontrado": return `${dinheiro(Number(d.dinheiro))} em dinheiro registrado no caixa e não achado como depósito no extrato depois de ${String(d.prazo_dias)} dias.`;
+    case "deposito_sem_caixa": return `Depósito em dinheiro de ${valores(d.valores)} no banco que não corresponde a nenhum dia do caixa.`;
     case "multi_divergente": return `Vendas aprovadas no Multicrediário somam ${dinheiro(Number(d.multi_vendas))} e o caixa lançou ${dinheiro(Number(d.caixa_vendas))} como Multicrediário${Number(d.parcelas_no_caixa) > 0 ? ` (fora ${dinheiro(Number(d.parcelas_no_caixa))} de parcelas recebidas na loja)` : ""}.`;
     case "caixa_nao_fechado": return "Não há fechamento de caixa registrado no sistema para este dia.";
     case "caixa_inconsistente": return `Total do caixa ${dinheiro(Number(d.caixa))}, soma das formas de pagamento ${dinheiro(Number(d.soma_formas))}.`;
