@@ -185,7 +185,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
+      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/atendimento", "Auditoria do atendimento"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -405,6 +405,22 @@ test.describe("relatório do dia e concorrentes", () => {
     await page.getByLabel("Instagram").fill("otica.nova");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
+  });
+});
+
+test.describe("auditoria do atendimento", () => {
+  test("mostra se o padrão funciona, nota por operadora e a conversa com os trechos; inclui critério", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/atendimento");
+    await expect(page.getByRole("heading", { name: "Auditoria do atendimento", level: 1 })).toBeVisible();
+    await expect(page.getByText("Nota 80 a 100 · 56 conversas")).toBeVisible();
+    await page.getByRole("button", { name: /Respondeu rápido/ }).click();
+    await expect(page.getByText(/Tenho amanhã às 10h/)).toBeVisible();
+    await page.getByLabel("Código").fill("nome_cliente");
+    await page.locator("#c-t-novo").fill("Usa o nome do cliente");
+    await page.locator("#c-d-novo").fill("Chama o cliente pelo nome ao longo da conversa.");
+    await page.getByRole("button", { name: "Incluir" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_aud_criterio_salvar")?.corpo).toMatchObject({ p_id: "nome_cliente", p_peso: 2, p_ativo: true });
   });
 });
 

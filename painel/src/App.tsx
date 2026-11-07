@@ -29,6 +29,7 @@ import { Mercado } from "./pages/Mercado";
 import { Conteudo } from "./pages/Conteudo";
 import { Multicredito } from "./pages/Multicredito";
 import { OrigemVendas } from "./pages/OrigemVendas";
+import { Atendimento } from "./pages/Atendimento";
 
 const cliente = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ function Rotas() {
         <Route path="/conteudo" element={<Conteudo />} />
         <Route path="/multicrediario" element={<Multicredito />} />
         <Route path="/origem-vendas" element={<OrigemVendas />} />
+        <Route path="/atendimento" element={<Atendimento />} />
         <Route path="/aprovacoes" element={<Aprovacoes />} />
         <Route path="/tarefas" element={<Tarefas />} />
         <Route path="/tarefas/:id" element={<TarefaDetalhe />} />

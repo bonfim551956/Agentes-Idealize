@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -57,6 +57,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       ...(eu.pode.consultar_global ? [{ para: "/multicrediario", rotulo: "Multicrediário", icone: <CreditCard className={ic} /> }] : []),
       { para: "/laboratorio", rotulo: "Laboratório", icone: <FlaskConical className={ic} /> },
       { para: "/comercial", rotulo: "Comercial", icone: <MessagesSquare className={ic} /> },
+      ...(eu.pode.consultar_global ? [{ para: "/atendimento", rotulo: "Auditoria do atendimento", icone: <Headset className={ic} /> }] : []),
       { para: "/marketing", rotulo: "Marketing", icone: <Megaphone className={ic} /> },
       { para: "/retorno", rotulo: "Retorno das campanhas", icone: <TrendingUp className={ic} /> },
       { para: "/origem-vendas", rotulo: "Origem das vendas", icone: <Rota className={ic} /> },
