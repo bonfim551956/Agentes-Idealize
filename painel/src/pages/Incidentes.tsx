@@ -18,7 +18,7 @@ export function Incidentes() {
   return (
     <>
       <Cabecalho titulo="Incidentes"
-        descricao="Falhas repetidas são agrupadas num só incidente; o contador e a gravidade sobem a cada nova ocorrência."
+        descricao="Falhas repetidas são agrupadas num só incidente. Quando o agente volta a rodar com sucesso, o incidente é fechado sozinho com a data da correção."
         acoes={
           <div role="group" aria-label="Quais incidentes" className="flex rounded-medio border border-linha bg-superficie p-1">
             {[true, false].map((v) => (
@@ -37,6 +37,9 @@ export function Incidentes() {
         <ul className="flex flex-col gap-2">
           {q.data!.map((i) => {
             const s = SEVERIDADE[i.severidade];
+            const d = (i.detalhes ?? {}) as { corrigido_auto?: boolean; corrigido_em?: string; correcoes?: unknown[] };
+            const auto = i.status === "resolvido" && d.corrigido_auto === true;
+            const voltas = Array.isArray(d.correcoes) ? d.correcoes.length : 0;
             return (
               <li key={i.id}>
                 <Painel className={cx("flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between",
@@ -46,15 +49,25 @@ export function Incidentes() {
                       <Etiqueta tom={s?.tom}>{s?.rotulo ?? i.severidade}</Etiqueta>
                       {i.escalonado && <Etiqueta tom="critico">Gravidade aumentou</Etiqueta>}
                       <Etiqueta tom={i.status === "resolvido" ? "ok" : i.status === "em_tratamento" ? "lente" : "neutro"}>
-                        {i.status === "resolvido" ? "Resolvido" : i.status === "em_tratamento" ? "Em tratamento" : "Aberto"}
+                        {auto ? "✓ Corrigido" : i.status === "resolvido" ? "Resolvido" : i.status === "em_tratamento" ? "Em tratamento" : "Aberto"}
                       </Etiqueta>
                     </div>
                     <h2 className="mt-2 text-base font-bold">{i.titulo}</h2>
                     <p className="mt-1 text-sm text-suave">
-                      {i.ocorrencias} {i.ocorrencias === 1 ? "ocorrência" : "ocorrências"}, a primeira {relativo(i.primeira_em)} e a última {relativo(i.ultima_em)}
+                      {i.ocorrencias === 1
+                        ? <>1 ocorrência em {dataHora(i.primeira_em)}</>
+                        : <>{i.ocorrencias} ocorrências, a primeira {relativo(i.primeira_em)} e a última {relativo(i.ultima_em)}</>}
                       {i.agente_id && `, agente ${i.agente_id}`}{i.unidade_id && `, ${rotuloUnidade(i.unidade_id, eu.unidades)}`}.
                     </p>
-                    {i.resolvido_em && <p className="mt-1 text-sm text-suave">Resolvido em {dataHora(i.resolvido_em)}.</p>}
+                    {voltas > 0 && i.status !== "resolvido" && (
+                      <p className="mt-1 text-sm font-bold text-critico">A falha voltou depois de {voltas === 1 ? "uma correção" : `${voltas} correções`}.</p>
+                    )}
+                    {auto ? (
+                      <div className="mt-3 rounded-medio bg-ok-fundo p-3 text-sm text-ok">
+                        <p className="font-bold">Corrigido em {dataHora(d.corrigido_em ?? i.resolvido_em!)}</p>
+                        <p>Fechado automaticamente: o agente voltou a rodar com sucesso depois da falha.</p>
+                      </div>
+                    ) : i.resolvido_em && <p className="mt-1 text-sm text-suave">Resolvido em {dataHora(i.resolvido_em)}.</p>}
                     {i.tarefa_id && <Link to={`/tarefas/${i.tarefa_id}`} className="mt-2 inline-block text-sm font-bold text-lente hover:underline">Abrir a tarefa ligada</Link>}
                   </div>
                   {i.pode_tratar && (

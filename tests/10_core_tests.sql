@@ -224,6 +224,40 @@ do $$ declare a uuid; x core.tarefas; r text; begin
   perform t.ok('retentativa','esgotou tentativas → falhou', r='falhou', r);
   perform t.ok('retentativa','falha repetida abre incidente', exists (select 1 from core.incidentes where chave_agrupamento='falha:teste:lanc'));
 end $$;
+
+-- incidente de falha fecha sozinho quando o agente volta a funcionar, e reabre se a falha voltar (pedido 07/11)
+do $$ declare a uuid; b uuid; x core.tarefas; r text; i record; begin
+  a := core.criar_tarefa('00000000-0000-0000-0000-00000000000d','teste','lanc','fin.lanc','registrar','loja_a','{"k":"d5"}','idem-auto-01',10);
+  select * into x from core.reivindicar('teste','w1',60);
+  r := core.registrar_execucao(a,'w1','sucesso',null,'{}');
+  select * into i from core.incidentes where chave_agrupamento='falha:teste:lanc' order by id desc limit 1;
+  perform t.ok('incidente_auto','sucesso do mesmo agente/tipo fecha o incidente',
+    i.status='resolvido' and i.resolvido_em is not null and i.detalhes->>'corrigido_auto'='true' and i.detalhes ? 'corrigido_em', i.status);
+  perform t.ok('incidente_auto','correção fica na auditoria',
+    exists (select 1 from core.auditoria where acao='incidente_corrigido' and entidade_id=i.id::text));
+  b := core.criar_tarefa('00000000-0000-0000-0000-00000000000d','teste','lanc','fin.lanc','registrar','loja_a','{"k":"d6"}','idem-auto-02',10);
+  update core.tarefas set max_tentativas = 1 where id = b;
+  select * into x from core.reivindicar('teste','w1',60);
+  r := core.registrar_execucao(b,'w1','erro',null,null,'HTTP 503 de novo');
+  perform t.ok('incidente_auto','falha voltando reabre o mesmo incidente com o contador somado',
+    (select count(*) from core.incidentes where chave_agrupamento='falha:teste:lanc')=1
+    and (select status from core.incidentes where id=i.id)='aberto'
+    and (select ocorrencias from core.incidentes where id=i.id)=i.ocorrencias+1
+    and (select tarefa_id from core.incidentes where id=i.id)=b, r);
+  perform t.ok('incidente_auto','reaberto guarda o histórico da correção e some o selo de corrigido',
+    jsonb_array_length((select detalhes->'correcoes' from core.incidentes where id=i.id))=1
+    and not ((select detalhes from core.incidentes where id=i.id) ? 'corrigido_auto'));
+  -- sucesso de OUTRO tipo não fecha
+  perform core.abrir_incidente('falha:teste:outro','media','x','teste');
+  a := core.criar_tarefa('00000000-0000-0000-0000-00000000000d','teste','lanc','fin.lanc','registrar','loja_a','{"k":"d7"}','idem-auto-03',10);
+  select * into x from core.reivindicar('teste','w1',60);
+  r := core.registrar_execucao(a,'w1','sucesso',null,'{}');
+  perform t.ok('incidente_auto','sucesso de outro tipo não fecha incidente alheio',
+    (select status from core.incidentes where chave_agrupamento='falha:teste:outro')='aberto');
+  perform t.ok('incidente_auto','e fecha de novo o reaberto do mesmo tipo',
+    (select status from core.incidentes where id=i.id)='resolvido');
+  update core.incidentes set status='resolvido', resolvido_em=now() where chave_agrupamento='falha:teste:outro';
+end $$;
 -- nenhuma senha/token em erro gravado (achado 28/10: endereço do RH com a senha foi parar na tarefa e no incidente)
 do $$ declare a uuid; x core.tarefas; r text; seg text := 'Abc123SenhaSecreta987'; begin
   a := core.criar_tarefa('00000000-0000-0000-0000-00000000000d','teste','segredo','fin.lanc','registrar','loja_a','{"k":"d5"}','idem-0205',10);
