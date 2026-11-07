@@ -184,7 +184,7 @@ test.describe("estados e permissões", () => {
     page.on("console", (m) => { if (m.type() === "error") erros.push(m.text()); });
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
-      ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
+      ["/", "Plataforma operando"], ["/central", "Tudo para resolver"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
       ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/atendimento", "Auditoria do atendimento"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
@@ -408,6 +408,20 @@ test.describe("relatório do dia e concorrentes", () => {
     await page.getByLabel("Instagram").fill("otica.nova");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
+  });
+});
+
+test.describe("tudo para resolver", () => {
+  test("junta arquivos e avisos de todas as áreas e filtra por área", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/central");
+    await expect(page.getByRole("heading", { name: "Tudo para resolver", level: 1 })).toBeVisible();
+    await expect(page.getByText("sicredi_novembro.pdf")).toBeVisible();
+    await page.getByRole("button", { name: /^Caixa/ }).click();
+    await expect(page.getByText("sicredi_novembro.pdf")).toHaveCount(0);
+    await expect(page.getByText(/Pix de R\$ 720,00 entrou/)).toBeVisible();
+    await page.getByRole("link", { name: "Resolver", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/caixa$/);
   });
 });
 

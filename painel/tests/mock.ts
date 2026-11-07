@@ -435,6 +435,18 @@ export const RPC: Record<string, unknown> = {
     resolvidos: [{ id: 30, tipo: "centavos", dia: "2026-10-27", descricao: "OS 9003: diferença de centavos", resolvido_em: "2026-11-07T11:00:00Z", resolvido_por: "painel", nota: "Arredondamento do ADM" }],
   },
   painel_multi_resolver: null,
+  painel_central: {
+    total: 5, urgentes: 3,
+    areas: [{ area: "Caixa", itens: 2, urgentes: 2, link: "/caixa" }, { area: "Arquivos", itens: 1, urgentes: 1, link: "/enviar" },
+      { area: "Multicrediário", itens: 1, urgentes: 0, link: "/multicrediario" }, { area: "Cobranças", itens: 1, urgentes: 0, link: "/cobrancas" }],
+    itens: [
+      { area: "Arquivos", tipo: "Erro na leitura", gravidade: 1, unidade_id: "sao_vicente", dia: "2026-11-07", titulo: "sicredi_novembro.pdf", texto: "Não foi possível ler: arquivo longo demais: a leitura ficou incompleta", link: "/enviar", desde: "2026-11-07T21:00:00Z" },
+      { area: "Caixa", tipo: "Lançado no caixa e não achado", gravidade: 1, unidade_id: "sao_vicente", dia: "2026-10-30", titulo: "30/10 (sexta)", texto: "Pix: 1 valor(es) somando R$ 250,00 não achados no extrato do banco.", link: "/caixa", desde: "2026-11-07T21:00:00Z" },
+      { area: "Caixa", tipo: "Entrou e não está no caixa", gravidade: 1, unidade_id: "sao_vicente", dia: "2026-10-08", titulo: "08/10 (quinta)", texto: "Pix de R$ 720,00 entrou e não está em nenhum fechamento.", link: "/caixa", desde: "2026-11-07T21:00:00Z" },
+      { area: "Multicrediário", tipo: "valor_com_entrada", gravidade: 3, unidade_id: "sao_vicente", dia: "2026-10-01", titulo: "01/10", texto: "OS 2291421: o ADM tem R$ 2.531,11, mas o financiado é R$ 2.231,11 (o ADM somou a entrada de R$ 300,00)", link: "/multicrediario", desde: "2026-11-07T21:00:00Z" },
+      { area: "Cobranças", tipo: "Parcela em atraso", gravidade: 3, unidade_id: "sao_vicente", dia: "2026-10-12", titulo: "OS 1234", texto: "R$ 300,00 · 26 dias de atraso", link: "/cobrancas", desde: "2026-11-07T21:00:00Z" },
+    ],
+  },
   painel_origem_vendas: {
     desde: "2026-10-09", ate: "2026-11-07", dias: 30, pode_editar: true, janela_dias: 90, ultima_leitura: "2026-11-07T18:00:00Z",
     resumo: [

@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -39,6 +39,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
   const ic = "h-4 w-4 shrink-0";
   const grupos: { titulo: string; itens: Item[] }[] = [
     { titulo: "Precisa de decisão", itens: [
+      { para: "/central", rotulo: "Tudo para resolver", icone: <Inbox className={ic} />, urgente: true },
       { para: "/aprovacoes", rotulo: "Aprovações", icone: <ClipboardCheck className={ic} />, contagem: r?.aprovacoes_pendentes, urgente: true },
       { para: "/incidentes", rotulo: "Incidentes", icone: <ShieldAlert className={ic} />, contagem: incidentes, urgente: true },
       { para: "/pendencias", rotulo: "Pendências financeiras", icone: <AlertOctagon className={ic} />, contagem: r?.pendencias_fin.abertas },
