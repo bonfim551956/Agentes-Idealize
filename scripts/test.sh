@@ -50,6 +50,8 @@ echo "→ testes dos agentes de conteúdo"
 $P -f tests/106_conteudo.sql
 echo "→ testes da conferência do Multicrediário"
 $P -f tests/107_multi.sql
+echo "→ testes da origem das vendas"
+$P -f tests/108_origem.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"

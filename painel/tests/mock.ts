@@ -431,6 +431,25 @@ export const RPC: Record<string, unknown> = {
     resolvidos: [{ id: 30, tipo: "centavos", dia: "2026-10-27", descricao: "OS 9003: diferença de centavos", resolvido_em: "2026-11-07T11:00:00Z", resolvido_por: "painel", nota: "Arredondamento do ADM" }],
   },
   painel_multi_resolver: null,
+  painel_origem_vendas: {
+    desde: "2026-10-09", ate: "2026-11-07", dias: 30, pode_editar: true, janela_dias: 90, ultima_leitura: "2026-11-07T18:00:00Z",
+    resumo: [
+      { unidade_id: "sao_vicente", origem: "loja", vendas: 28, valor: 20758.9 }, { unidade_id: "sao_vicente", origem: "visao_ideal", vendas: 13, valor: 12990 },
+      { unidade_id: "sao_vicente", origem: "recorrente", vendas: 40, valor: 30100 }, { unidade_id: "sao_vicente", origem: "sem_origem", vendas: 108, valor: 87690.9 },
+    ],
+    cruzadas: [{ unidade_lead: "sorocaba", unidade_venda: "sao_vicente", origem: "visao_ideal", vendas: 2, valor: 1800 }],
+    vendas: [
+      { os: "2349184", unidade_id: "sao_vicente", dia: "2026-11-06", valor: 1955.19, origem: "visao_ideal", unidade_lead: "sao_vicente", funil: "CAMPANHA SV", dia_lead: "2026-11-01", dias_ate_venda: 5 },
+      { os: "2349190", unidade_id: "sao_vicente", dia: "2026-11-06", valor: 799, origem: "loja", unidade_lead: "sao_vicente", funil: "LOJA SV", dia_lead: "2026-11-06", dias_ate_venda: 0 },
+      { os: "2349201", unidade_id: "sao_vicente", dia: "2026-11-05", valor: 640, origem: "sem_origem", unidade_lead: null, funil: null, dia_lead: null, dias_ate_venda: null },
+    ],
+    funis: [
+      { id: 12894195, nome: "CAMPANHA SV", tipo: "visao_ideal", unidade_id: "sao_vicente" },
+      { id: 12768479, nome: "LOJA SV", tipo: "loja", unidade_id: "sao_vicente" },
+      { id: 13999999, nome: "FUNIL NOVO", tipo: null, unidade_id: null },
+    ],
+  },
+  painel_origem_funil_salvar: null,
   painel_cob_regras: { adm_inicio: "2026-08-25", pode_editar: true, anteriores: { cobrancas: 261, vencidas: 211, valor_vencido: 31452, valor_a_vencer: 6175.34 } },
   painel_cob_regras_salvar: {},
   painel_multi_ajustes: { unidades: "saovicente", tolerancia: 0.01, adm_inicio: "2026-08-25", pode_editar: true },

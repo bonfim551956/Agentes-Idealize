@@ -185,7 +185,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
+      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -405,6 +405,20 @@ test.describe("relatório do dia e concorrentes", () => {
     await page.getByLabel("Instagram").fill("otica.nova");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
+  });
+});
+
+test.describe("origem das vendas", () => {
+  test("mostra loja × Visão Ideal por loja, venda por venda, e classifica funil novo", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/origem-vendas");
+    await expect(page.getByRole("heading", { name: "Origem das vendas", level: 1 })).toBeVisible();
+    await expect(page.getByText("R$ 12.990,00")).toBeVisible();
+    await expect(page.getByText(/vendeu em São Vicente/)).toBeVisible();
+    await page.getByLabel("Tipo do funil FUNIL NOVO").selectOption("visao_ideal");
+    await page.getByLabel("Loja do funil FUNIL NOVO").selectOption("sao_vicente");
+    await page.getByRole("row", { name: /FUNIL NOVO/ }).getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_origem_funil_salvar")?.corpo).toEqual({ p_funil: 13999999, p_tipo: "visao_ideal", p_unidade: "sao_vicente" });
   });
 });
 
