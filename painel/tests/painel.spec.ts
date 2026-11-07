@@ -257,7 +257,8 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("formas somam R$ 3.006,00")).toBeVisible();
     await expect(page.getByText(/18\/10\/2026 \(domingo\)/)).toBeVisible();
     await expect(page.getByText("loja fechada nesse dia")).toBeVisible();
-    await expect(page.getByText(/Vendas aprovadas no Multicrediário somam R\$\s900,00/)).toBeVisible();
+    await expect(page.getByText(/Venda 0004209916: R\$\s370,00 no Multicrediário e R\$\s350,00 no caixa/)).toBeVisible();
+    await expect(page.getByText(/lançada no caixa de 22\/10\/2026 \(quinta\)\. Valor confere\./)).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("caixa_nao_fechado");
     await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
   });

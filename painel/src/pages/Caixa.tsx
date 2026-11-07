@@ -14,6 +14,10 @@ const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   extrato_atrasado: { rotulo: "Extrato atrasado", tom: "atencao" },
   sem_registro_no_caixa: { rotulo: "Entrou e não está no caixa", tom: "critico" },
   multi_divergente: { rotulo: "Multicrediário × caixa", tom: "critico" },
+  multi_sem_caixa: { rotulo: "Venda do Multicrediário fora do caixa", tom: "critico" },
+  multi_valor_diferente: { rotulo: "Multicrediário: valor diferente", tom: "critico" },
+  caixa_multi_sem_venda: { rotulo: "Multicrediário no caixa sem venda", tom: "atencao" },
+  multi_outro_dia: { rotulo: "Lançada em outro dia", tom: "neutro" },
   deposito_nao_encontrado: { rotulo: "Dinheiro não depositado", tom: "critico" },
   deposito_sem_caixa: { rotulo: "Depósito sem caixa", tom: "atencao" },
 };
@@ -30,6 +34,10 @@ function textoAlerta(a: CaixaPainel["alertas"][number]): string {
     case "deposito_nao_encontrado": return `${dinheiro(Number(d.dinheiro))} em dinheiro registrado no caixa e não achado como depósito no extrato depois de ${String(d.prazo_dias)} dias.`;
     case "deposito_sem_caixa": return `Depósito em dinheiro de ${valores(d.valores)} no banco que não corresponde a nenhum dia do caixa.`;
     case "multi_divergente": return `Vendas aprovadas no Multicrediário somam ${dinheiro(Number(d.multi_vendas))} e o caixa lançou ${dinheiro(Number(d.caixa_vendas))} como Multicrediário${Number(d.parcelas_no_caixa) > 0 ? ` (fora ${dinheiro(Number(d.parcelas_no_caixa))} de parcelas recebidas na loja)` : ""}.`;
+    case "multi_sem_caixa": return `Venda ${String(d.venda)} de ${dinheiro(Number(d.valor_multi))} aprovada no Multicrediário e não lançada no caixa (procurada de ${String(d.dias_antes)} dias antes a ${String(d.dias_depois)} dias depois).`;
+    case "multi_valor_diferente": return `Venda ${String(d.venda)}: ${dinheiro(Number(d.valor_multi))} no Multicrediário e ${dinheiro(Number(d.valor_caixa))} no caixa de ${data(String(d.caixa_dia))} (${String(d.caixa_dia_semana)})${Number(d.lancamentos) > 1 ? `, em ${String(d.lancamentos)} lançamentos` : ""}. Diferença de ${dinheiro(Math.abs(Number(d.diferenca)))}.`;
+    case "multi_outro_dia": return `Venda ${String(d.venda)} de ${dinheiro(Number(d.valor_multi))} aprovada no Multicrediário neste dia e lançada no caixa de ${data(String(d.caixa_dia))} (${String(d.caixa_dia_semana)}). Valor confere.`;
+    case "caixa_multi_sem_venda": return `${dinheiro(Number(d.valor))} lançado como Multicrediário no caixa e não achado como venda nem como parcela recebida no Multicrediário.`;
     case "caixa_nao_fechado": return "Não há fechamento de caixa registrado no sistema para este dia.";
     case "caixa_inconsistente": return `Total do caixa ${dinheiro(Number(d.caixa))}, soma das formas de pagamento ${dinheiro(Number(d.soma_formas))}.`;
     case "dinheiro_sem_deposito": return `${dinheiro(Number(d.dinheiro))} em dinheiro sem depósito registrado depois de ${String(d.prazo_dias)} dias.`;

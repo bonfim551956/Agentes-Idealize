@@ -18,7 +18,7 @@ type Dados = {
   resumo: { aprovadas: number; aprovado_valor: number; negadas: number; canceladas: number; parcelas: number; parcelas_valor: number; abertos: number };
   abertos: Aviso[]; vendas: Venda[]; negadas: Negada[]; recebidas: Recebida[]; resolvidos: Resolvido[];
 };
-type Ajustes = { unidades: string; tolerancia: number; adm_inicio: string; pode_editar: boolean };
+type Ajustes = { unidades: string; tolerancia: number; adm_inicio: string; caixa_dias_antes: number; caixa_dias_depois: number; caixa_dif_max: number; pode_editar: boolean };
 
 const TIPO: Record<string, { rotulo: string; tom: Tom }> = {
   valor_diferente: { rotulo: "Valor diferente", tom: "critico" },
@@ -54,20 +54,25 @@ function Cartao({ rotulo, valor, detalhe, tom }: { rotulo: string; valor: string
 function Regras() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["multi-ajustes"], queryFn: () => rpc<Ajustes>("painel_multi_ajustes") });
-  const [form, setForm] = useState<{ tolerancia: string; adm_inicio: string; unidades: string } | null>(null);
+  const [form, setForm] = useState<{ tolerancia: string; adm_inicio: string; unidades: string; antes: string; depois: string; dif: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
   const [enviando, setEnviando] = useState(false);
   if (q.isLoading) return <Carregando linhas={3} />;
   if (q.error || !q.data) return <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} />;
   const a = q.data;
-  const f = form ?? { tolerancia: String(a.tolerancia).replace(".", ","), adm_inicio: a.adm_inicio, unidades: a.unidades };
+  const f = form ?? { tolerancia: String(a.tolerancia).replace(".", ","), adm_inicio: a.adm_inicio, unidades: a.unidades,
+    antes: String(a.caixa_dias_antes), depois: String(a.caixa_dias_depois), dif: String(a.caixa_dif_max).replace(".", ",") };
   async function salvar() {
     setEnviando(true); setErro(null); setSalvo(false);
     try {
       const tol = Number(f.tolerancia.replace(",", "."));
       if (Number.isNaN(tol)) throw new Error("Tolerância inválida.");
-      await rpc("painel_multi_ajustes_salvar", { p_tolerancia: tol, p_adm_inicio: f.adm_inicio, p_unidades: f.unidades, p_motivo: null });
+      const antes = Number(f.antes), depois = Number(f.depois), dif = Number(f.dif.replace(",", "."));
+      if (!Number.isInteger(antes) || !Number.isInteger(depois)) throw new Error("Dias inválidos.");
+      if (Number.isNaN(dif)) throw new Error("Diferença inválida.");
+      await rpc("painel_multi_ajustes_salvar", { p_tolerancia: tol, p_adm_inicio: f.adm_inicio, p_unidades: f.unidades, p_motivo: null,
+        p_caixa_dias_antes: antes, p_caixa_dias_depois: depois, p_caixa_dif_max: dif });
       setForm(null); setSalvo(true);
       void qc.invalidateQueries({ queryKey: ["multi-ajustes"] }); void qc.invalidateQueries({ queryKey: ["multi"] });
     } catch (e) { setErro(traduzir(e).message); } finally { setEnviando(false); }
@@ -83,6 +88,16 @@ function Regras() {
       </Campo>
       <Campo id="m-un" rotulo="Unidades do ADM conferidas" ajuda="Separadas por vírgula, como estão no ADM (ex.: saovicente).">
         <input id="m-un" className={entradaCls} disabled={!a.pode_editar} value={f.unidades} onChange={(e) => setForm({ ...f, unidades: e.target.value })} />
+      </Campo>
+      <p className="pt-2 text-sm font-bold">Multicrediário × caixa (venda a venda)</p>
+      <Campo id="m-cxa" rotulo="Procurar no caixa até quantos dias antes" ajuda="O caixa pode ter lançado a venda antes de ela aparecer no Multicrediário.">
+        <input id="m-cxa" inputMode="numeric" className={entradaCls} disabled={!a.pode_editar} value={f.antes} onChange={(e) => setForm({ ...f, antes: e.target.value })} />
+      </Campo>
+      <Campo id="m-cxd" rotulo="Procurar no caixa até quantos dias depois" ajuda="Venda lançada no caixa em outro dia aparece como informação, com as duas datas.">
+        <input id="m-cxd" inputMode="numeric" className={entradaCls} disabled={!a.pode_editar} value={f.depois} onChange={(e) => setForm({ ...f, depois: e.target.value })} />
+      </Campo>
+      <Campo id="m-cxv" rotulo="Diferença máxima para casar a venda (R$)" ajuda="Até este valor, a venda casa com o lançamento e vira aviso de valor diferente. Acima, fica sem par.">
+        <input id="m-cxv" inputMode="decimal" className={entradaCls} disabled={!a.pode_editar} value={f.dif} onChange={(e) => setForm({ ...f, dif: e.target.value })} />
       </Campo>
       {erro && <p role="alert" className="text-sm font-bold text-critico">{erro}</p>}
       {salvo && <p role="status" className="text-sm font-bold text-ok">Regras salvas e conferência refeita.</p>}

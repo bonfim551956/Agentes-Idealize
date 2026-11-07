@@ -58,6 +58,7 @@ echo "→ testes do caixa (janela, Pix em dois, Multicrediário)"
 $P -f tests/110_cx_janela.sql
 echo "→ testes da central de pendências"
 $P -f tests/111_central.sql
+$P -f tests/112_cx_multi_venda.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"

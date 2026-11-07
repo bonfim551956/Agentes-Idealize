@@ -49,10 +49,11 @@ select t.ok('aviso','Pix do domingo sem registro no caixa: com dia da semana e l
           and detalhe->>'dia_semana' = 'domingo' and (detalhe->>'loja_fechada')::boolean and (detalhe->>'valor')::numeric = 720));
 select t.ok('aviso','o Pix dividido não vira "sem registro"', not exists (select 1 from cx.alertas where unidade_id = 'piracicaba'
   and tipo = 'sem_registro_no_caixa' and status = 'aberto' and dia = t.sab() + 3));
-select t.ok('multi','Multicrediário × caixa: R$ 900 no caixa × R$ 1.000 no Multi (parcela recebida na loja fica de fora)',
-  exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo = 'multi_divergente' and status = 'aberto'
-          and (detalhe->>'caixa_vendas')::numeric = 900 and (detalhe->>'multi_vendas')::numeric = 1000 and (detalhe->>'parcelas_no_caixa')::numeric = 153.24),
-  (select jsonb_agg(detalhe)::text from cx.alertas where unidade_id = 'piracicaba' and tipo = 'multi_divergente'));
+select t.ok('multi','venda a venda: R$ 900 no caixa × R$ 1.000 no Multi = valor diferente (parcela recebida na loja fica de fora)',
+  exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo = 'multi_valor_diferente' and status = 'aberto'
+          and (detalhe->>'valor_caixa')::numeric = 900 and (detalhe->>'valor_multi')::numeric = 1000 and detalhe->>'venda' = '9901')
+  and not exists (select 1 from cx.alertas where unidade_id = 'piracicaba' and tipo in ('caixa_multi_sem_venda','multi_divergente') and status = 'aberto'),
+  (select jsonb_agg(jsonb_build_object('t', tipo, 'd', detalhe))::text from cx.alertas where unidade_id = 'piracicaba' and tipo like '%multi%'));
 select t.ok('relatorio','relatório do dia avisa o dinheiro sem registro e o Multicrediário',
   pg_get_functiondef('rel.gerar(date)'::regprocedure) ~ 'sem registro no caixa' and pg_get_functiondef('rel.gerar(date)'::regprocedure) ~ 'Multicrediário × caixa' and rel.gerar() is not null);
 
