@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Lock, LockOpen, Store, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
+  ServerCog, ShieldAlert, Sun, Home, Lock, LockOpen, Store, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -40,6 +40,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
   const ic = "h-4 w-4 shrink-0";
   const grupos: { titulo: string; itens: Item[] }[] = [
     { titulo: "Precisa de decisão", itens: [
+      ...(eu.pode.consultar_global ? [{ para: "/", rotulo: "Início: seus agentes", icone: <Home className={ic} /> }] : []),
       { para: "/central", rotulo: "Tudo para resolver", icone: <Inbox className={ic} />, urgente: true },
       { para: "/aprovacoes", rotulo: "Aprovações", icone: <ClipboardCheck className={ic} />, contagem: r?.aprovacoes_pendentes, urgente: true },
       { para: "/incidentes", rotulo: "Incidentes", icone: <ShieldAlert className={ic} />, contagem: incidentes, urgente: true },
@@ -49,7 +50,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
     { titulo: "Acompanhar", itens: [
       ...(eu.pode.consultar_global ? [{ para: "/relatorio", rotulo: "Relatório do dia", icone: <Newspaper className={ic} /> }] : []),
       ...(eu.pode.consultar_global ? [{ para: "/conteudo", rotulo: "Conteúdo", icone: <Clapperboard className={ic} /> }] : []),
-      { para: "/", rotulo: "Visão geral", icone: <Gauge className={ic} /> },
+      { para: eu.pode.consultar_global ? "/visao-geral" : "/", rotulo: "Visão geral", icone: <Gauge className={ic} /> },
       ...(eu.pode.consultar_global ? [{ para: "/mercado", rotulo: "Mercado e concorrentes", icone: <Radar className={ic} /> }] : []),
       { para: "/tarefas", rotulo: "Tarefas", icone: <ListChecks className={ic} /> },
       { para: "/agentes", rotulo: "Agentes", icone: <Bot className={ic} /> },

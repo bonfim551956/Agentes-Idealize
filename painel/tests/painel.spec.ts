@@ -23,7 +23,7 @@ test.describe("entrada", () => {
     await expect(page.getByRole("alert")).toContainText("Código incorreto");
     await page.getByLabel("Código de 6 dígitos").fill("123456");
     await page.getByRole("button", { name: "Confirmar" }).click();
-    await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Seus agentes" })).toBeVisible();
   });
 
   test("sem autenticador cadastrado, obriga a ativar o 2FA", async ({ page }) => {
@@ -57,7 +57,7 @@ test.describe("entrada", () => {
     await page.getByLabel("Senha nova", { exact: true }).fill("uma frase longa e minha");
     await page.getByLabel("Repita a senha nova").fill("uma frase longa e minha");
     await page.getByRole("button", { name: "Salvar senha nova" }).click();
-    await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Seus agentes" })).toBeVisible();
     expect(chamadas.find((c) => c.fn === "auth_user_put")?.corpo).toMatchObject({ password: "uma frase longa e minha" });
   });
 
@@ -71,7 +71,7 @@ test.describe("entrada", () => {
     const chamadas = await instalar(page, { logado: "aal2" });
     await page.addInitScript(() => { window.localStorage.setItem("idealize-painel-ultimo-uso", String(Date.now() - 60 * 60 * 1000)); });
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Seus agentes" })).toBeVisible();
     expect(chamadas.map((c) => c.fn)).toContain("painel_eu");
   });
 
@@ -95,7 +95,7 @@ test.describe("entrada", () => {
 test.describe("visão geral e decisões", () => {
   test("mostra o estado e o que precisa de decisão @celular", async ({ page }) => {
     await instalar(page, { logado: "aal2" });
-    await page.goto("/");
+    await page.goto("/visao-geral");
     await expect(page.getByRole("heading", { name: "Plataforma operando" })).toBeVisible();
     await expect(page.getByText("Operação aguardando sua aprovação")).toBeVisible();
     await expect(page.getByText("Tarefas em estado incerto")).toBeVisible();
@@ -134,7 +134,7 @@ test.describe("visão geral e decisões", () => {
 
   test("pausar a plataforma pede o motivo e registra", async ({ page }) => {
     const chamadas = await instalar(page, { logado: "aal2" });
-    await page.goto("/");
+    await page.goto("/visao-geral");
     await page.getByRole("button", { name: "Pausar a plataforma" }).click();
     const dlg = page.getByRole("dialog");
     await dlg.getByLabel("O que aconteceu").fill("teste de modo seguro");
@@ -184,7 +184,7 @@ test.describe("estados e permissões", () => {
     page.on("console", (m) => { if (m.type() === "error") erros.push(m.text()); });
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
-      ["/", "Plataforma operando"], ["/central", "Tudo para resolver"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
+      ["/", "Seus agentes"], ["/visao-geral", "Plataforma operando"], ["/central", "Tudo para resolver"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
       ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/atendimento", "Auditoria do atendimento"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
@@ -275,6 +275,15 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText(/lançada no caixa de 22\/10\/2026 \(quinta\)\. Valor confere\./)).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("caixa_nao_fechado");
     await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
+  });
+
+  test("início mostra o que cada agente está fazendo, tarefas e pendências", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Seus agentes" })).toBeVisible();
+    await expect(page.getByText("Operando agora").first()).toBeVisible();
+    await expect(page.getByText(/1 tarefa\(s\) esperando você/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Abrir Caixa" })).toHaveAttribute("href", "/caixa");
   });
 
   test("caixa: filtros de período, forma e busca por valor", async ({ page }) => {

@@ -78,6 +78,16 @@ select t.ok('conversa','reabrir volta a cobrar o aviso',
   exists (select 1 from cx.alertas where referencia = current_setting('t.ref') and status = 'aberto'));
 delete from core.avisos_conversa where referencia = current_setting('t.ref');
 
+-- página inicial dos agentes
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select set_config('t.ini', public.painel_inicio()::text, false);
+reset role; select t.sem_jwt();
+select t.ok('inicio','página inicial lista os agentes com tarefas e pendências',
+  jsonb_array_length(current_setting('t.ini')::jsonb->'agentes') > 3
+  and (select bool_and(x ? 'tarefas' and x ? 'operando' and x ? 'abertos') from jsonb_array_elements(current_setting('t.ini')::jsonb->'agentes') x),
+  left(current_setting('t.ini'), 300));
+
 -- regras editáveis: dias depois = 1 → a venda lançada 2 dias depois deixa de casar
 update core.config set valor = '1' where chave = 'cx.multi_dias_depois';
 select cx.recalcular();

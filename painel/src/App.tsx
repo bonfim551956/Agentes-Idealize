@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Sessao, useSessao } from "./auth/Sessao";
 import { LojaTravada } from "./lib/loja";
+import { Inicio } from "./pages/Inicio";
 import { Shell } from "./ui/Shell";
 import { ErroPainel } from "./lib/erros";
 import { VisaoGeral } from "./pages/VisaoGeral";
@@ -49,7 +50,8 @@ function Rotas() {
   return (
     <Shell>
       <Routes>
-        <Route path="/" element={<VisaoGeral />} />
+        <Route path="/" element={<Inicio />} />
+        <Route path="/visao-geral" element={<VisaoGeral />} />
         <Route path="/relatorio" element={<Relatorio />} />
         <Route path="/mercado" element={<Mercado />} />
         <Route path="/conteudo" element={<Conteudo />} />
