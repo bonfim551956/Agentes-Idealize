@@ -6,6 +6,7 @@ import { rpc, type ComercialPainel } from "../lib/api";
 import { dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   cliente_sem_resposta: { rotulo: "Cliente esperando resposta", tom: "critico" },
@@ -66,7 +67,7 @@ function LojaDoFunil({ f, unidades }: { f: NonNullable<ComercialPainel["funis"]>
 
 export function Comercial() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [dias, setDias] = useState(7);
   const [tipo, setTipo] = useState("");
   const q = useQuery({ queryKey: ["comercial", unidade, dias],
@@ -93,7 +94,7 @@ export function Comercial() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
               <label className="sr-only" htmlFor="c-un">Loja</label>
-              <select id="c-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="c-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

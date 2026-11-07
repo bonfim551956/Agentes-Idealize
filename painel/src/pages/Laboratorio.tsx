@@ -5,6 +5,7 @@ import { useSessao } from "../auth/Sessao";
 import { rpc, type LabPainel } from "../lib/api";
 import { data, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, th } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   prazo_vencido: { rotulo: "Prazo vencido", tom: "critico" },
@@ -30,7 +31,7 @@ function detalheAlerta(a: LabPainel["alertas"][number]): string {
 
 export function Laboratorio() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [tipo, setTipo] = useState("");
   const q = useQuery({ queryKey: ["lab", unidade], queryFn: () => rpc<LabPainel>("painel_lab", { p_unidade: unidade || null }), refetchInterval: 60_000 });
 
@@ -55,7 +56,7 @@ export function Laboratorio() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
               <label className="sr-only" htmlFor="l-un">Loja</label>
-              <select id="l-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="l-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

@@ -5,6 +5,7 @@ import { useSessao } from "../auth/Sessao";
 import { rpc, type CaixaPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   nao_encontrado: { rotulo: "Não achado no extrato", tom: "critico" },
@@ -66,7 +67,7 @@ function Forma({ c, fonte, rotulo, coberto }: { c: Celula; fonte: string; rotulo
 
 export function Caixa() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [dias, setDias] = useState(7);
   const [tipo, setTipo] = useState("");
   const q = useQuery({ queryKey: ["caixa", unidade, dias],
@@ -95,7 +96,7 @@ export function Caixa() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
               <label className="sr-only" htmlFor="cx-un">Loja</label>
-              <select id="cx-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="cx-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

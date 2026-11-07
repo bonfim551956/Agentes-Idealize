@@ -246,6 +246,20 @@ test.describe("estados e permissões", () => {
       { p_conta: "1441410073197795", p_unidade: "sorocaba", p_marca: "idealize", p_motivo: "conta da loja de Sorocaba" });
   });
 
+  test("loja travada no topo vale para todas as telas e fica guardada", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/");
+    await page.getByLabel("Ver loja").selectOption("sao_vicente");
+    await expect(page.getByText("Loja travada")).toBeVisible();
+    await page.goto("/caixa");
+    await expect(page.locator("#cx-un")).toHaveValue("sao_vicente");
+    await expect(page.locator("#cx-un")).toBeDisabled();
+    await expect.poll(() => chamadas.filter((c) => c.fn === "painel_caixa").at(-1)?.corpo).toMatchObject({ p_unidade: "sao_vicente" });
+    await page.getByRole("button", { name: "Destravar" }).click();
+    await expect(page.locator("#cx-un")).toBeEnabled();
+    await expect(page.locator("#cx-un")).toHaveValue("");
+  });
+
   test("caixa mostra o que não foi achado no extrato e o que aguarda extrato", async ({ page }) => {
     await instalar(page, { logado: "aal2" });
     await page.goto("/caixa");
@@ -332,7 +346,7 @@ test.describe("estados e permissões", () => {
     await page.goto("/enviar");
     await expect(page.getByText(/Leitura desligada/)).toBeVisible();
     await expect(page.getByText("Relatório da Stone (São Vicente): falta o da semana (prazo 27/10 10h)")).toBeVisible();
-    await page.getByLabel("Loja").selectOption("sao_vicente");
+    await page.getByLabel("Loja", { exact: true }).selectOption("sao_vicente");
     await page.getByLabel("O que é").selectOption("stone");
     await page.locator("#env-arquivos").setInputFiles({ name: "stone_semana.csv", mimeType: "text/csv", buffer: Buffer.from("data;valor\n2026-10-20;100") });
     await page.getByRole("button", { name: "Enviar", exact: true }).click();

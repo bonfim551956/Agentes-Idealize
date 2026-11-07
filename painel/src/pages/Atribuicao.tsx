@@ -5,6 +5,7 @@ import { useSessao } from "../auth/Sessao";
 import { rpc, type AtribuicaoPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 const div = (a: number, b: number) => (b > 0 ? a / b : null);
 const pct = (v: number | null) => (v == null ? "sem dados" : `${numero(Math.round(v * 1000) / 10)}%`);
@@ -12,7 +13,7 @@ const vezes = (v: number | null) => (v == null ? "sem dados" : `${numero(Math.ro
 
 export function Atribuicao() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [dias, setDias] = useState(30);
   const q = useQuery({ queryKey: ["atribuicao", unidade, dias],
     queryFn: () => rpc<AtribuicaoPainel>("painel_atribuicao", { p_unidade: unidade || null, p_dias: dias }), refetchInterval: 600_000 });
@@ -37,7 +38,7 @@ export function Atribuicao() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
               <label className="sr-only" htmlFor="at-un">Loja</label>
-              <select id="at-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="at-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

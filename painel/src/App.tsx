@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Sessao, useSessao } from "./auth/Sessao";
+import { LojaTravada } from "./lib/loja";
 import { Shell } from "./ui/Shell";
 import { ErroPainel } from "./lib/erros";
 import { VisaoGeral } from "./pages/VisaoGeral";
@@ -86,7 +87,7 @@ export function App() {
   return (
     <QueryClientProvider client={cliente}>
       <BrowserRouter>
-        <Sessao><Rotas /></Sessao>
+        <Sessao><LojaTravada><Rotas /></LojaTravada></Sessao>
       </BrowserRouter>
     </QueryClientProvider>
   );

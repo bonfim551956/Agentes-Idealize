@@ -8,6 +8,7 @@ import { traduzir } from "../lib/erros";
 import { data, dataHora, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
+import { useLojaTravada } from "../lib/loja";
 
 const TIPOS: [string, string][] = [["auto", "O sistema descobre"], ["extrato", "Extrato do banco"], ["fatura", "Fatura do cartão"],
   ["stone", "Relatório da Stone"], ["comprovante", "Comprovante de pagamento"], ["boleto", "Boleto a pagar"], ["nota", "Nota fiscal"]];
@@ -121,7 +122,8 @@ function Conferir({ e, r, aoConcluir }: { e: Envio; r: EnviosPainel; aoConcluir:
 export function Enviar() {
   const { eu } = useSessao();
   const qc = useQueryClient();
-  const [unidade, setUnidade] = useState(eu.unidades.length === 1 ? eu.unidades[0].id : "");
+  const { loja } = useLojaTravada();
+  const [unidade, setUnidade] = useState(eu.unidades.length === 1 ? eu.unidades[0].id : loja);
   const [tipo, setTipo] = useState("auto");
   const [conta, setConta] = useState("");
   const [arquivos, setArquivos] = useState<File[]>([]);

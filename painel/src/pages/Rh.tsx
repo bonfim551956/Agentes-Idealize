@@ -5,6 +5,7 @@ import { useSessao } from "../auth/Sessao";
 import { rpc, type RhPainel } from "../lib/api";
 import { data, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   ferias_vencidas: { rotulo: "Férias fora do prazo", tom: "critico" },
@@ -47,7 +48,7 @@ function texto(a: RhPainel["alertas"][number]): { titulo: string; detalhe: strin
 
 export function Rh() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [tipo, setTipo] = useState("");
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const q = useQuery({ queryKey: ["rh", unidade, mes],
@@ -75,7 +76,7 @@ export function Rh() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
               <label className="sr-only" htmlFor="rh-un">Loja</label>
-              <select id="rh-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="rh-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

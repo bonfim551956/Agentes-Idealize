@@ -6,6 +6,7 @@ import { useSessao } from "../auth/Sessao";
 import { rpc } from "../lib/api";
 import { data, numero, rotuloUnidade } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Vazio, cx, entradaCls } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 // Tudo o que precisa de alguém num lugar só: arquivos para conferir ou com erro, avisos do Caixa, Cobranças,
 // Multicrediário, pendências financeiras e incidentes. Cada item leva para a tela onde se resolve.
@@ -22,7 +23,7 @@ const ROTULO_TIPO: Record<string, string> = {
 export function Central() {
   const { eu } = useSessao();
   const [area, setArea] = useState("");
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [so, setSo] = useState(false);
   const q = useQuery({ queryKey: ["central", unidade], queryFn: () => rpc<Dados>("painel_central", { p_unidade: unidade || null }), refetchInterval: 120_000 });
   const d = q.data;
@@ -46,7 +47,7 @@ export function Central() {
           </div>
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <label className="sr-only" htmlFor="ce-un">Loja</label>
-            <select id="ce-un" className={entradaCls + " sm:max-w-xs"} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+            <select id="ce-un" className={entradaCls + " sm:max-w-xs"} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
               <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
             </select>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={so} onChange={(e) => setSo(e.target.checked)} />Só urgentes</label>

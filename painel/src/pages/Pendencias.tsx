@@ -7,6 +7,7 @@ import { data, dinheiro, relativo, rotuloUnidade, TIPO_PENDENCIA } from "../lib/
 import { Botao, Cabecalho, Carregando, Dados, ErroCaixa, Etiqueta, Painel, Vazio, entradaCls } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
 import { traduzir } from "../lib/erros";
+import { useFiltroLoja } from "../lib/loja";
 
 type Categoria = { id: string; nome: string; grupo: string };
 
@@ -90,7 +91,7 @@ const decideAqui = (p: Pendencia) => Boolean(p.lancamento) && (p.tipo === "sem_c
 export function Pendencias() {
   const { eu } = useSessao();
   const qc = useQueryClient();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [tipo, setTipo] = useState("");
   const q = useQuery({ queryKey: ["pendencias", unidade, tipo],
     queryFn: () => rpc<Pendencia[]>("painel_pendencias", { p_unidade: unidade || null, p_tipo: tipo || null }) });
@@ -104,7 +105,7 @@ export function Pendencias() {
         descricao="O que o agente financeiro não conseguiu fechar sozinho e o que você precisa decidir. A decisão no card já corrige o lançamento. As que bloqueiam o fechamento precisam ser resolvidas antes de aprovar o mês." />
       <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
         <label className="sr-only" htmlFor="p-unidade">Unidade</label>
-        <select id="p-unidade" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+        <select id="p-unidade" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
           <option value="">Todas as unidades</option>
           {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
         </select>

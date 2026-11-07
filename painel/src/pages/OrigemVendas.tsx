@@ -5,6 +5,7 @@ import { rpc } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { traduzir } from "../lib/erros";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { useFiltroLoja } from "../lib/loja";
 
 // Origem de cada venda do ADM: Loja ou Visão Ideal, e de qual loja veio o cliente (pelo funil do lead na Kommo).
 type Linha = { unidade_id: string; origem: string; vendas: number; valor: number };
@@ -60,7 +61,7 @@ function FunilLinha({ f, unidades, podeEditar, aoSalvar }: { f: Funil; unidades:
 export function OrigemVendas() {
   const { eu } = useSessao();
   const qc = useQueryClient();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [dias, setDias] = useState(30);
   const [origem, setOrigem] = useState("");
   const q = useQuery({ queryKey: ["origem-vendas", unidade, dias, origem],
@@ -78,7 +79,7 @@ export function OrigemVendas() {
 
       <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
         <label className="sr-only" htmlFor="ov-un">Loja</label>
-        <select id="ov-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+        <select id="ov-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
           <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
         </select>
         <label className="sr-only" htmlFor="ov-dias">Período</label>

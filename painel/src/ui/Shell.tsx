@@ -4,11 +4,12 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
+  ServerCog, ShieldAlert, Sun, Lock, LockOpen, Store, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
 import { Marca } from "./Marca";
+import { useLojaTravada } from "../lib/loja";
 import { cx } from "./base";
 
 type Item = { para: string; rotulo: string; icone: ReactNode; contagem?: number; urgente?: boolean };
@@ -124,6 +125,28 @@ function Rodape() {
   );
 }
 
+function SeletorLoja() {
+  const { eu } = useSessao();
+  const { loja, travar } = useLojaTravada();
+  if (eu.unidades.length < 2) return null;
+  return (
+    <div className={cx("flex flex-wrap items-center justify-end gap-2 border-b px-4 py-2 sm:px-8 lg:px-12",
+      loja ? "border-lente bg-lente-clara" : "border-linha bg-superficie")}>
+      {loja ? <Lock className="h-4 w-4 text-lente" aria-hidden /> : <Store className="h-4 w-4 text-suave" aria-hidden />}
+      <label htmlFor="loja-travada" className="text-sm font-bold">{loja ? "Loja travada" : "Ver loja"}</label>
+      <select id="loja-travada" className="rounded-medio border border-linha bg-superficie px-3 py-1 text-sm" value={loja} onChange={(e) => travar(e.target.value)}>
+        <option value="">Todas as lojas</option>
+        {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+      </select>
+      {loja && (
+        <button onClick={() => travar("")} className="flex items-center gap-1 rounded-medio px-2 py-1 text-sm hover:bg-elevada">
+          <LockOpen className="h-4 w-4" aria-hidden /> Destravar
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState(false);
   const { data: r } = useResumo();
@@ -160,6 +183,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </div>
 
       <div className="min-w-0">
+        <SeletorLoja />
         {r?.plataforma_pausada && (
           <div role="status" className="flex items-center gap-2 bg-atencao-fundo px-4 py-2 text-sm font-bold text-atencao lg:px-12">
             <Activity className="h-4 w-4" aria-hidden />

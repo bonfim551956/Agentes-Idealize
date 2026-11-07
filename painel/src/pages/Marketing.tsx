@@ -6,6 +6,7 @@ import { rpc, type MarketingPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   conta_com_problema: { rotulo: "Conta com problema na Meta", tom: "critico" },
@@ -93,7 +94,7 @@ function GastoPorDia({ dias }: { dias: MarketingPainel["por_dia"] }) {
 
 export function Marketing() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [dias, setDias] = useState(7);
   const [tipo, setTipo] = useState("");
   const [recrut, setRecrut] = useState(false);
@@ -126,7 +127,7 @@ export function Marketing() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
               <label className="sr-only" htmlFor="m-un">Loja</label>
-              <select id="m-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="m-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>

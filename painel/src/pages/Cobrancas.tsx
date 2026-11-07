@@ -6,6 +6,7 @@ import { rpc, type CobrancasPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { traduzir } from "../lib/erros";
+import { useFiltroLoja } from "../lib/loja";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   cobranca_sem_parcela: { rotulo: "Cobrança ativa sem parcela no sistema", tom: "critico" },
@@ -79,7 +80,7 @@ function RegraAnterior() {
 
 export function Cobrancas() {
   const { eu } = useSessao();
-  const [unidade, setUnidade] = useState("");
+  const [unidade, setUnidade, travada] = useFiltroLoja();
   const [tipo, setTipo] = useState("");
   const q = useQuery({ queryKey: ["cobrancas", unidade],
     queryFn: () => rpc<CobrancasPainel>("painel_cobrancas", { p_unidade: unidade || null }), refetchInterval: 300_000 });
@@ -106,7 +107,7 @@ export function Cobrancas() {
 
             <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
               <label className="sr-only" htmlFor="cb-un">Loja</label>
-              <select id="cb-un" className={entradaCls} value={unidade} onChange={(e) => setUnidade(e.target.value)}>
+              <select id="cb-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
