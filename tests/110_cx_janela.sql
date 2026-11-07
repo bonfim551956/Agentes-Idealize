@@ -56,6 +56,24 @@ select t.ok('multi','Multicrediário × caixa: R$ 900 no caixa × R$ 1.000 no Mu
 select t.ok('relatorio','relatório do dia avisa o dinheiro sem registro e o Multicrediário',
   pg_get_functiondef('rel.gerar(date)'::regprocedure) ~ 'sem registro no caixa' and pg_get_functiondef('rel.gerar(date)'::regprocedure) ~ 'Multicrediário × caixa' and rel.gerar() is not null);
 
+-- revisão 07/11: mesmo dia casa primeiro; entrega procura o Pix até 15 dias antes; aviso de extrato com dias vazios
+insert into fin.movimentos (conta_id, data, sentido, valor, descricao, chave_dedup) values
+  ('teste_cxj_banco', t.sab() + 4, 'credito', 100, 'RECEBIMENTO PIX QUARTA', 'cxj-6'),
+  ('teste_cxj_banco', t.sab() - 6, 'credito', 230, 'RECEBIMENTO PIX ANTECIPADO', 'cxj-7');
+insert into cx.dias (unidade_id, dia, caixa, soma_formas) values ('piracicaba', t.sab() + 4, 330, 330) on conflict do nothing;
+insert into cx.pagamentos (unidade_id, dia, origem, forma, valor) values
+  ('piracicaba', t.sab() + 2, 'venda', 'pix', 100),     -- segunda: o Pix dela não veio no extrato
+  ('piracicaba', t.sab() + 4, 'venda', 'pix', 100),     -- quarta: o Pix de quarta é dela
+  ('piracicaba', t.sab() + 4, 'entrega', 'pix', 230);   -- entrega: cliente pagou 10 dias antes
+select cx.recalcular();
+select t.ok('revisao','o Pix do mesmo dia fica com o caixa do mesmo dia',
+  exists (select 1 from cx.casamentos c join cx.pagamentos p on p.id = c.pagamento_id join fin.movimentos m on 'banco:' || m.id = c.recebimento
+          where p.unidade_id = 'piracicaba' and p.dia = t.sab() + 4 and p.valor = 100 and m.data = t.sab() + 4));
+select t.ok('revisao','valor lançado na entrega acha o Pix pago dias antes',
+  exists (select 1 from cx.casamentos c join cx.pagamentos p on p.id = c.pagamento_id where p.unidade_id = 'piracicaba' and p.origem = 'entrega' and p.valor = 230));
+select t.ok('extrato','PDF lido com dias úteis vazios gera aviso',
+  fin._checar_leitura('extrato', '{"formato":"ia","linhas":[{"data":"2026-10-26","valor":10},{"data":"2026-10-30","valor":5}]}')::text ~ '27/10, 28/10, 29/10');
+
 update core.config set valor = '' where chave = 'cx.dias_sem_expediente';
 select grupo, teste, case when ok then 'PASS' else 'FAIL' end as r, left(coalesce(detalhe,''),160) as detalhe from t.resultados order by n;
 select count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from t.resultados;
