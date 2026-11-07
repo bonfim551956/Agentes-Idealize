@@ -7,6 +7,7 @@ import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../li
 import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { traduzir } from "../lib/erros";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, type Periodo } from "../ui/Filtros";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   cobranca_sem_parcela: { rotulo: "Cobrança ativa sem parcela no sistema", tom: "critico" },
@@ -32,6 +33,13 @@ function texto(a: CobrancasPainel["alertas"][number]): { titulo: string; detalhe
     default: return { titulo: a.referencia, detalhe: "" };
   }
 }
+
+const GRUPO: Record<string, string> = { cobranca_sem_parcela: "divergencia", baixa_sem_pagamento: "divergencia", pago_sem_baixa: "divergencia",
+  parcela_vencida: "atraso", entrada_pendente: "atraso", parcela_sem_cobranca: "sem_boleto" };
+const dataDoAlerta = (a: CobrancasPainel["alertas"][number]) => {
+  const d = a.detalhe ?? {};
+  return String(d.vencimento ?? d.vencimento_mais_antigo ?? d.pago_em ?? d.combinada_para ?? a.aberto_em ?? "").slice(0, 10) || null;
+};
 
 type Regras = { adm_inicio: string; pode_editar: boolean;
   anteriores: { cobrancas: number; vencidas: number; valor_vencido: number; valor_a_vencer: number } };
@@ -82,6 +90,12 @@ export function Cobrancas() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
   const [tipo, setTipo] = useState("");
+  const [per, setPer] = useState<Periodo | null>(null);
+  const [fins, setFins] = useState<string[]>([]);
+  const [situ, setSitu] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
+  const ativos = (tipo ? 1 : 0) + (per ? 1 : 0) + (fins.length ? 1 : 0) + (situ.length ? 1 : 0) + (busca.trim() ? 1 : 0);
+  const limpar = () => { setTipo(""); setPer(null); setFins([]); setSitu([]); setBusca(""); };
   const q = useQuery({ queryKey: ["cobrancas", unidade],
     queryFn: () => rpc<CobrancasPainel>("painel_cobrancas", { p_unidade: unidade || null }), refetchInterval: 300_000 });
 
@@ -92,7 +106,10 @@ export function Cobrancas() {
       {q.isLoading ? <Carregando linhas={5} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : (() => {
         const c = q.data!;
         const ligado = c.sincronizacao.ativa && c.sincronizacao.agente === "ativo";
-        const alertas = c.alertas.filter((a) => !tipo || a.tipo === tipo);
+        const base = c.alertas.filter((a) => (!per || noPeriodo(dataDoAlerta(a), per)) && (!fins.length || fins.includes(String(a.detalhe?.financeira ?? "asaas")))
+          && casaBusca(busca, a.detalhe, a.referencia));
+        const conta = (g: string) => base.filter((a) => GRUPO[a.tipo] === g).length;
+        const alertas = base.filter((a) => (!tipo || a.tipo === tipo) && (!situ.length || situ.includes(GRUPO[a.tipo] ?? "")));
         const tot = (k: keyof CobrancasPainel["carteira"][number]) => c.carteira.reduce((s, x) => s + Number(x[k]), 0);
         const vencido = tot("vencido_1_30") + tot("vencido_31_60") + tot("vencido_61_90") + tot("vencido_90_mais");
         return (
@@ -100,23 +117,36 @@ export function Cobrancas() {
             <div role="status" className={cx("mb-8 rounded-grande border px-6 py-4 text-sm",
               ligado ? "border-linha bg-superficie" : "border-atencao/40 bg-atencao-fundo text-atencao")}>
               {ligado
-                ? <>Conferindo duas vezes por dia. Última leitura {relativo(c.sincronizacao.ultima?.em)}.</>
+                ? <>Conferindo de hora em hora (8h às 20h). Última leitura {relativo(c.sincronizacao.ultima?.em)}.</>
                 : <span className="font-bold">Agente desligado: os números abaixo são da última leitura{c.sincronizacao.ultima ? ` (${relativo(c.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
               {!c.sincronizacao.asaas_lojas.length && <p className="mt-1">Sem chave do Asaas ainda: o cruzamento com o Asaas aparece quando as chaves das lojas forem cadastradas.</p>}
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
-              <label className="sr-only" htmlFor="cb-un">Loja</label>
-              <select id="cb-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-                <option value="">Todas as lojas</option>
-                {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="cb-tipo">Tipo de alerta</label>
-              <select id="cb-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="">Todos os alertas</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
-              </select>
-            </div>
+            <BarraFiltros ativos={ativos} aoLimpar={limpar}>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr]">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <label className="flex items-center gap-2 whitespace-nowrap text-sm"><input type="checkbox" checked={!!per} onChange={(e) => setPer(e.target.checked ? periodo("30") : null)} />Filtrar por vencimento</label>
+                  {per && <FiltroPeriodo id="cb-per" valor={per} aoMudar={setPer} />}
+                </div>
+                <FiltroBusca id="cb-busca" valor={busca} aoMudar={setBusca} dica="Buscar OS ou valor (ex.: 157,98)" />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-2xl">
+                <label className="sr-only" htmlFor="cb-un">Loja</label>
+                <select id="cb-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                  <option value="">Todas as lojas</option>
+                  {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
+                <label className="sr-only" htmlFor="cb-tipo">Tipo de alerta</label>
+                <select id="cb-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                  <option value="">Todos os alertas</option>
+                  {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
+                </select>
+              </div>
+              <FiltroOpcoes rotulo="Financeira" valor={fins} aoMudar={setFins} opcoes={Object.entries(FIN).map(([k, v]) => ({ id: k, rotulo: v }))} />
+              <FiltroOpcoes rotulo="Situação" valor={situ} aoMudar={setSitu}
+                opcoes={[{ id: "divergencia", rotulo: "Asaas × sistema não bate", n: conta("divergencia") }, { id: "atraso", rotulo: "Em atraso", n: conta("atraso") },
+                  { id: "sem_boleto", rotulo: "Sem boleto", n: conta("sem_boleto") }]} />
+            </BarraFiltros>
 
             <dl className="mb-12 grid grid-cols-2 gap-6 sm:grid-cols-4">
               <div><dt className="text-xs text-suave">A receber (total)</dt><dd className="text-2xl font-bold">{dinheiro(tot("a_vencer_total") + vencido)}</dd></div>
@@ -127,7 +157,7 @@ export function Cobrancas() {
 
             <Secao titulo="O que precisa de atenção" descricao="Os avisos somem sozinhos quando a parcela é paga, baixada ou corrigida.">
               {c.sincronizacao.asaas_lojas.length > 0 && <div className="mb-4"><RegraAnterior /></div>}
-              {!alertas.length ? (
+              {!alertas.length && ativos ? <Vazio titulo="Nenhum aviso com esses filtros" icone={<CheckCircle2 className="h-6 w-6" />} /> : !alertas.length ? (
                 <Vazio titulo="Nada fora do lugar" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {c.sincronizacao.ultima ? "Nenhum atraso nem divergência na última leitura." : "Os avisos aparecem depois da primeira leitura."}
                 </Vazio>

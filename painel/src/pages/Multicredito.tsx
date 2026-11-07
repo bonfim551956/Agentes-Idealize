@@ -6,15 +6,16 @@ import { data, dinheiro, relativo, type Tom } from "../lib/format";
 import { traduzir } from "../lib/erros";
 import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Vazio, cx, entradaCls } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, type Periodo } from "../ui/Filtros";
 
 // Conferência do Multicrediário × ADM (São Vicente). O robô lê o Multicrediário às 7h; a conferência roda às 7h40.
 type Aviso = { id: number; tipo: string; dia: string | null; descricao: string; aberto_em: string };
 type Resolvido = { id: number; tipo: string; dia: string | null; descricao: string; resolvido_em: string; resolvido_por: string | null; nota: string | null };
-type Venda = { venda: string; os: string | null; plano: string | null; garantido: number; adm: number | null; situacao: string };
-type Negada = { venda: string; tipo: number; valor: number | null; resposta: string | null };
-type Recebida = { venda: string; parcela: number | null; valor: number | null };
+type Venda = { dia?: string; venda: string; os: string | null; plano: string | null; garantido: number; adm: number | null; situacao: string };
+type Negada = { dia?: string; venda: string; tipo: number; valor: number | null; resposta: string | null };
+type Recebida = { dia?: string; venda: string; parcela: number | null; valor: number | null };
 type Dados = {
-  dia: string; pode_editar: boolean; ultima_leitura: string | null; ultima_conferencia: string | null; dias: string[];
+  dia: string; ate?: string; pode_editar: boolean; ultima_leitura: string | null; ultima_conferencia: string | null; dias: string[];
   resumo: { aprovadas: number; aprovado_valor: number; negadas: number; canceladas: number; parcelas: number; parcelas_valor: number; abertos: number };
   abertos: Aviso[]; vendas: Venda[]; negadas: Negada[]; recebidas: Recebida[]; resolvidos: Resolvido[];
 };
@@ -112,32 +113,51 @@ export function Multicredito() {
   const { eu } = useSessao();
   const qc = useQueryClient();
   const [aba, setAba] = useState<(typeof ABAS)[number][0]>("avisos");
-  const [dia, setDia] = useState("");
-  const q = useQuery({ queryKey: ["multi", dia], queryFn: () => rpc<Dados>("painel_multi", { p_dia: dia || null }), enabled: eu.pode.consultar_global });
+  const [per, setPer] = useState<Periodo | null>(null);
+  const [busca, setBusca] = useState("");
+  const [situ, setSitu] = useState<string[]>([]);
+  const [tipos, setTipos] = useState<string[]>([]);
+  const q = useQuery({ queryKey: ["multi", per?.de, per?.ate], queryFn: () => rpc<Dados>("painel_multi", { p_dia: per?.de ?? null, p_ate: per?.ate ?? null }), enabled: eu.pode.consultar_global });
 
   if (!eu.pode.consultar_global) return <Vazio titulo="Multicrediário">Esta tela fica com a diretoria.</Vazio>;
-  const d = q.data;
+  const bruto = q.data;
+  const d = bruto && {
+    ...bruto,
+    abertos: bruto.abertos.filter((a) => (!per || noPeriodo(a.dia, per)) && (!tipos.length || tipos.includes(a.tipo)) && casaBusca(busca, a.descricao, a.dia ? data(a.dia) : null)),
+    vendas: bruto.vendas.filter((v) => (!situ.length || situ.includes(v.situacao)) && casaBusca(busca, v.venda, v.os, v.plano, v.garantido, v.adm)),
+    negadas: bruto.negadas.filter((n) => casaBusca(busca, n.venda, n.valor, n.resposta)),
+    recebidas: bruto.recebidas.filter((r) => casaBusca(busca, r.venda, r.valor)),
+    resolvidos: bruto.resolvidos.filter((r) => (!per || noPeriodo(r.dia, per)) && casaBusca(busca, r.descricao, r.nota)),
+  };
+  const varios = !!d && !!d.ate && d.ate !== d.dia;
+  const ativos = (per ? 1 : 0) + (busca.trim() ? 1 : 0) + (situ.length ? 1 : 0) + (tipos.length ? 1 : 0);
+  const limpar = () => { setPer(null); setBusca(""); setSitu([]); setTipos([]); };
   const concluir = () => { void qc.invalidateQueries({ queryKey: ["multi"] }); };
   const contagem: Record<string, number | undefined> = { avisos: d?.abertos.length, vendas: d?.vendas.length, parcelas: d?.recebidas.length };
   return (
     <>
       <Cabecalho titulo="Multicrediário × ADM"
-        descricao={d ? `São Vicente · ${data(d.dia)} · leitura do Multicrediário ${d.ultima_leitura ? relativo(d.ultima_leitura) : "ainda não feita"}${d.ultima_conferencia ? ` · conferido ${relativo(d.ultima_conferencia)}` : ""}`
+        descricao={d ? `São Vicente · ${varios ? `${data(d.dia)} a ${data(d.ate ?? d.dia)}` : data(d.dia)} · leitura do Multicrediário ${d.ultima_leitura ? relativo(d.ultima_leitura) : "ainda não feita"}${d.ultima_conferencia ? ` · conferido ${relativo(d.ultima_conferencia)}` : ""}`
           : "Vendas no crediário, documentos e parcelas recebidas, conferidos com o ADM todo dia às 7h40."}
-        acoes={d && d.dias.length > 0 ? (
-          <>
-            <label className="sr-only" htmlFor="multi-dia">Dia</label>
-            <select id="multi-dia" className={entradaCls + " w-auto"} value={dia || d.dia} onChange={(e) => setDia(e.target.value === d.dias[0] ? "" : e.target.value)}>
-              {d.dias.map((x) => <option key={x} value={x}>{data(x)}</option>)}
-            </select>
-          </>
-        ) : undefined} />
+        />
+
+      {d && (
+        <BarraFiltros ativos={ativos} aoLimpar={limpar}>
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr]">
+            <FiltroPeriodo id="multi-per" valor={per ?? { atalho: "personalizado", de: d.dia, ate: d.ate ?? d.dia }} aoMudar={setPer} />
+            <FiltroBusca id="multi-busca" valor={busca} aoMudar={setBusca} dica="Buscar nº da venda, OS ou valor (ex.: 1.275,00)" />
+          </div>
+          {aba === "vendas" && <FiltroOpcoes rotulo="Situação" valor={situ} aoMudar={setSitu} opcoes={Object.entries(SITUACAO).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: bruto?.vendas.filter((x) => x.situacao === k).length }))} />}
+          {aba === "avisos" && <FiltroOpcoes rotulo="Tipo" valor={tipos} aoMudar={setTipos}
+            opcoes={Object.entries(TIPO).filter(([k]) => bruto?.abertos.some((x) => x.tipo === k)).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: bruto?.abertos.filter((x) => x.tipo === k).length }))} />}
+        </BarraFiltros>
+      )}
 
       {d && (
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Cartao rotulo="Vendas aprovadas no dia" valor={String(d.resumo.aprovadas)} detalhe={`${dinheiro(d.resumo.aprovado_valor)} financiado`} />
+          <Cartao rotulo={varios ? "Vendas aprovadas no período" : "Vendas aprovadas no dia"} valor={String(d.resumo.aprovadas)} detalhe={`${dinheiro(d.resumo.aprovado_valor)} financiado`} />
           <Cartao rotulo="Negadas / canceladas" valor={`${d.resumo.negadas} / ${d.resumo.canceladas}`} detalhe="consultas que não viraram venda" />
-          <Cartao rotulo="Parcelas recebidas no dia" valor={String(d.resumo.parcelas)} detalhe={dinheiro(d.resumo.parcelas_valor)} />
+          <Cartao rotulo={varios ? "Parcelas recebidas no período" : "Parcelas recebidas no dia"} valor={String(d.resumo.parcelas)} detalhe={dinheiro(d.resumo.parcelas_valor)} />
           <Cartao rotulo="Para resolver (todos os dias)" valor={String(d.resumo.abertos)} tom={d.resumo.abertos > 0 ? "critico" : "ok"} detalhe={d.resumo.abertos > 0 ? "veja abaixo" : "tudo certo"} />
         </div>
       )}
@@ -152,7 +172,7 @@ export function Multicredito() {
       </div>
 
       {aba === "regras" ? <Regras /> : q.isLoading ? <Carregando linhas={8} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : !d ? null : aba === "avisos" ? (
-        d.abertos.length === 0 ? <Vazio titulo="Nada para resolver">Tudo o que o robô leu no Multicrediário bate com o ADM.</Vazio> : (
+        d.abertos.length === 0 && ativos ? <Vazio titulo="Nenhum aviso com esses filtros" /> : d.abertos.length === 0 ? <Vazio titulo="Nada para resolver">Tudo o que o robô leu no Multicrediário bate com o ADM.</Vazio> : (
           <ul className="flex flex-col gap-2">
             {d.abertos.map((a) => (
               <li key={a.id}>
@@ -177,17 +197,17 @@ export function Multicredito() {
         )
       ) : aba === "vendas" ? (
         <div className="flex flex-col gap-6">
-          {d.vendas.length === 0 ? <Vazio titulo="Nenhuma venda aprovada neste dia" /> : (
+          {d.vendas.length === 0 ? <Vazio titulo={ativos ? "Nenhuma venda com esses filtros" : varios ? "Nenhuma venda aprovada no período" : "Nenhuma venda aprovada neste dia"} /> : (
             <Painel className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-linha text-left text-suave">
-                  <th className="p-3">Venda</th><th className="p-3">OS no ADM</th><th className="p-3">Plano</th>
+                  {varios && <th className="p-3">Dia</th>}<th className="p-3">Venda</th><th className="p-3">OS no ADM</th><th className="p-3">Plano</th>
                   <th className="p-3 text-right">Financiado (Multi)</th><th className="p-3 text-right">No ADM</th><th className="p-3">Situação</th>
                 </tr></thead>
                 <tbody>
                   {d.vendas.map((v) => (
                     <tr key={v.venda} className="border-b border-linha last:border-0">
-                      <td className="p-3 tabular-nums">{v.venda}</td><td className="p-3">{v.os ?? "—"}</td><td className="p-3">{v.plano ?? "—"}</td>
+                      {varios && <td className="p-3 tabular-nums">{v.dia ? data(v.dia) : "—"}</td>}<td className="p-3 tabular-nums">{v.venda}</td><td className="p-3">{v.os ?? "—"}</td><td className="p-3">{v.plano ?? "—"}</td>
                       <td className="p-3 text-right tabular-nums">{dinheiro(v.garantido)}</td><td className="p-3 text-right tabular-nums">{dinheiro(v.adm)}</td>
                       <td className="p-3"><Etiqueta tom={SITUACAO[v.situacao]?.tom}>{SITUACAO[v.situacao]?.rotulo ?? v.situacao}</Etiqueta></td>
                     </tr>
@@ -211,14 +231,14 @@ export function Multicredito() {
           )}
         </div>
       ) : aba === "parcelas" ? (
-        d.recebidas.length === 0 ? <Vazio titulo="Nenhuma parcela recebida neste dia" /> : (
+        d.recebidas.length === 0 ? <Vazio titulo={ativos ? "Nenhuma parcela com esses filtros" : varios ? "Nenhuma parcela recebida no período" : "Nenhuma parcela recebida neste dia"} /> : (
           <Painel className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-linha text-left text-suave"><th className="p-3">Venda</th><th className="p-3">Parcela</th><th className="p-3 text-right">Recebido</th></tr></thead>
+              <thead><tr className="border-b border-linha text-left text-suave">{varios && <th className="p-3">Dia</th>}<th className="p-3">Venda</th><th className="p-3">Parcela</th><th className="p-3 text-right">Recebido</th></tr></thead>
               <tbody>
                 {d.recebidas.map((r) => (
                   <tr key={`${r.venda}-${r.parcela}`} className="border-b border-linha last:border-0">
-                    <td className="p-3 tabular-nums">{r.venda}</td><td className="p-3">{r.parcela ?? "—"}</td><td className="p-3 text-right tabular-nums">{dinheiro(r.valor)}</td>
+                    {varios && <td className="p-3 tabular-nums">{r.dia ? data(r.dia) : "—"}</td>}<td className="p-3 tabular-nums">{r.venda}</td><td className="p-3">{r.parcela ?? "—"}</td><td className="p-3 text-right tabular-nums">{dinheiro(r.valor)}</td>
                   </tr>
                 ))}
               </tbody>

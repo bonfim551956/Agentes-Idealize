@@ -489,6 +489,11 @@ export const RPC: Record<string, unknown> = {
   painel_aud_criterio_salvar: null,
   painel_cob_regras: { adm_inicio: "2026-08-25", pode_editar: true, anteriores: { cobrancas: 261, vencidas: 211, valor_vencido: 31452, valor_a_vencer: 6175.34 } },
   painel_cob_regras_salvar: {},
+  painel_aviso_conversa: { status: "aberto", pode_explicar: true, mensagens: [
+    { id: 1, papel: "pessoa", autor: "Diego", texto: "O valor da Tatiana entrou duplicado no dia 25/09.", acao: "comentar", em: "2026-11-07T23:35:00Z", respondida: true },
+    { id: 2, papel: "agente", autor: "Agente do caixa", texto: "Confirmado: no dia 25/09 há três lançamentos de crédito de R$ 500,00 e o total do caixa é R$ 500,00 menor que a soma das formas. Um deles é duplicado; apagando no ADM, o aviso fecha sozinho na próxima conferência.", acao: "responder", em: "2026-11-07T23:40:00Z", respondida: false },
+  ] },
+  painel_aviso_escrever: { id: 3 },
   painel_multi_ajustes: { unidades: "saovicente", tolerancia: 0.01, adm_inicio: "2026-08-25", caixa_dias_antes: 3, caixa_dias_depois: 7, caixa_dif_max: 100, pode_editar: true },
   painel_multi_ajustes_salvar: { unidades: "saovicente", tolerancia: 0.05, adm_inicio: "2026-08-25" },
   painel_roteiro_decidir: null, painel_ideia_conteudo_promover: null,

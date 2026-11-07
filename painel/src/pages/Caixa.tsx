@@ -6,6 +6,8 @@ import { rpc, type CaixaPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
+import { ConversaAviso } from "../ui/ConversaAviso";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   nao_encontrado: { rotulo: "Não achado no extrato", tom: "critico" },
@@ -47,6 +49,13 @@ function textoAlerta(a: CaixaPainel["alertas"][number]): string {
   }
 }
 
+function formaDoAlerta(a: { tipo: string; detalhe: Record<string, unknown> | null }): string | null {
+  if (a.detalhe?.forma) return String(a.detalhe.forma);
+  if (a.tipo.startsWith("deposito_") || a.tipo === "dinheiro_sem_deposito") return "dinheiro";
+  if (a.tipo.startsWith("multi_") || a.tipo === "caixa_multi_sem_venda") return "crediario";
+  return null;
+}
+
 type Celula = CaixaPainel["conferencia"][number];
 function Forma({ c, fonte, rotulo, coberto }: { c: Celula; fonte: string; rotulo: string; coberto: boolean }) {
   const conferivel = ["banco", "asaas", "stone"].includes(fonte);
@@ -68,10 +77,16 @@ function Forma({ c, fonte, rotulo, coberto }: { c: Celula; fonte: string; rotulo
 export function Caixa() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [dias, setDias] = useState(7);
+  const [per, setPer] = usePeriodo("7");
   const [tipo, setTipo] = useState("");
-  const q = useQuery({ queryKey: ["caixa", unidade, dias],
-    queryFn: () => rpc<CaixaPainel>("painel_caixa", { p_unidade: unidade || null, p_dias: dias }), refetchInterval: 120_000 });
+  const [formas, setFormas] = useState<string[]>([]);
+  const [situ, setSitu] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
+  const [soDif, setSoDif] = useState(false);
+  const q = useQuery({ queryKey: ["caixa", unidade, per.de, per.ate],
+    queryFn: () => rpc<CaixaPainel>("painel_caixa", { p_unidade: unidade || null, p_de: per.de, p_ate: per.ate }), refetchInterval: 120_000 });
+  const ativos = (per.atalho !== "7" ? 1 : 0) + (tipo ? 1 : 0) + (formas.length ? 1 : 0) + (situ.length ? 1 : 0) + (busca.trim() ? 1 : 0) + (soDif ? 1 : 0);
+  const limpar = () => { setPer(periodo("7")); setTipo(""); setFormas([]); setSitu([]); setBusca(""); setSoDif(false); };
 
   return (
     <>
@@ -82,39 +97,58 @@ export function Caixa() {
         const ligado = c.sincronizacao.ativa && c.sincronizacao.agente === "ativo";
         const fonte = Object.fromEntries(c.fontes.map((f) => [f.forma, f]));
         const ate = (u: string, f: string) => c.cobertura.find((x) => x.unidade_id === u && x.fonte === f)?.ate ?? null;
-        const alertas = c.alertas.filter((a) => !tipo || a.tipo === tipo);
-        const linhas = c.dias.map((d) => ({ ...d, formas: c.conferencia.filter((x) => x.unidade_id === d.unidade_id && x.dia === d.dia) }));
+        const situacao = (a: { tipo: string; resolvido_em?: string | null }) => a.resolvido_em ? "resolvido" : ({ critico: "urgente", atencao: "atencao" } as Record<string, string>)[ALERTA[a.tipo]?.tom ?? ""] ?? "informativo";
+        const todos = [...c.alertas, ...(situ.includes("resolvido") ? (c.resolvidos ?? []) : [])];
+        const filtraData = per.atalho !== "7";
+        const base = todos.filter((a) => (!filtraData || noPeriodo(a.dia, per)) && (!formas.length || formas.includes(formaDoAlerta(a) ?? "-")) && casaBusca(busca, a.detalhe, a.dia ? data(a.dia) : null));
+        const contaSitu = (k: string) => base.filter((a) => situacao(a) === k).length;
+        const alertas = base.filter((a) => (!tipo || a.tipo === tipo) && (situ.length ? situ.includes(situacao(a)) : situacao(a) !== "resolvido"));
+        const linhas = c.dias.map((d) => {
+          const todas = c.conferencia.filter((x) => x.unidade_id === d.unidade_id && x.dia === d.dia);
+          return { ...d, formas: formas.length ? todas.filter((x) => formas.includes(x.forma)) : todas, todas };
+        }).filter((l) => {
+          if (formas.length && !l.formas.length) return false;
+          if (soDif && !(l.formas.some((f) => f.faltando > 0 && ["banco", "asaas", "stone"].includes(fonte[f.forma]?.fonte ?? "")) || (l.caixa != null && Math.abs(Number(l.caixa) - Number(l.soma_formas)) > 1))) return false;
+          return casaBusca(busca, l.caixa, l.todas.map((f) => [f.sistema, f.valores]), data(l.dia));
+        });
         return (
           <>
             <div role="status" className={cx("mb-8 rounded-grande border px-6 py-4 text-sm",
               ligado ? "border-linha bg-superficie" : "border-atencao/40 bg-atencao-fundo text-atencao")}>
               {ligado
-                ? <>Conferindo três vezes por dia. Última conferência {relativo(c.sincronizacao.ultima?.em)}.</>
+                ? <>Conferindo de hora em hora (8h às 20h) e sempre que um extrato ou arquivo da Stone é enviado. Última conferência {relativo(c.sincronizacao.ultima?.em)}.</>
                 : <span className="font-bold">Agente desligado: os números abaixo são da última conferência{c.sincronizacao.ultima ? ` (${relativo(c.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
               <p className="mt-1">Crédito e débito: pelo arquivo da Stone. Multicrediário: pelas vendas aprovadas lidas no Multicrediário (São Vicente). Brasilcard ainda sem conferência automática.</p>
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
+            <BarraFiltros ativos={ativos} aoLimpar={limpar}>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr]">
+              <FiltroPeriodo id="cx-per" valor={per} aoMudar={setPer} />
+              <FiltroBusca id="cx-busca" valor={busca} aoMudar={setBusca} dica="Buscar valor (ex.: 165,27) ou nº da venda" />
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-2xl">
               <label className="sr-only" htmlFor="cx-un">Loja</label>
               <select id="cx-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
-              <label className="sr-only" htmlFor="cx-dias">Período</label>
-              <select id="cx-dias" className={entradaCls} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-                <option value={3}>Últimos 3 dias</option>
-                <option value={7}>Últimos 7 dias</option>
-                <option value={31}>Últimos 31 dias</option>
-              </select>
               <label className="sr-only" htmlFor="cx-tipo">Tipo de alerta</label>
               <select id="cx-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
                 <option value="">Todos os alertas</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
+                {Object.entries(ALERTA).filter(([k]) => k !== "multi_divergente" && k !== "dinheiro_sem_deposito").map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
               </select>
             </div>
+            <FiltroOpcoes rotulo="Forma" valor={formas} aoMudar={setFormas}
+              opcoes={c.fontes.filter((f) => f.forma !== "outro").map((f) => ({ id: f.forma, rotulo: f.rotulo }))} />
+            <FiltroOpcoes rotulo="Situação" valor={situ} aoMudar={setSitu}
+              opcoes={[{ id: "urgente", rotulo: "Urgente", n: contaSitu("urgente") }, { id: "atencao", rotulo: "Atenção", n: contaSitu("atencao") },
+                { id: "informativo", rotulo: "Informativo", n: contaSitu("informativo") }, { id: "resolvido", rotulo: "Resolvidos" }]} />
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={soDif} onChange={(e) => setSoDif(e.target.checked)} />Na conferência por dia, só dias com diferença</label>
+            </BarraFiltros>
 
-            <Secao titulo="O que precisa de atenção" descricao="Os avisos somem sozinhos quando o valor aparece no extrato ou o fechamento é corrigido.">
-              {!alertas.length ? (
+            <Secao titulo="O que precisa de atenção" descricao={filtraData ? `Avisos de ${data(per.de)} a ${data(per.ate)}. Somem sozinhos quando o valor aparece no extrato ou o fechamento é corrigido.`
+              : "Todos os avisos em aberto, de qualquer data. Somem sozinhos quando o valor aparece no extrato ou o fechamento é corrigido. Mude o período para ver só os de certas datas."}>
+              {!alertas.length && ativos ? <Vazio titulo="Nenhum aviso com esses filtros" icone={<CheckCircle2 className="h-6 w-6" />} /> : !alertas.length ? (
                 <Vazio titulo="Nada fora do lugar" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {c.sincronizacao.ultima ? "Tudo o que já tem extrato bateu na última conferência." : "Os avisos aparecem depois da primeira conferência."}
                 </Vazio>
@@ -125,10 +159,13 @@ export function Caixa() {
                       <Painel className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <Etiqueta tom={ALERTA[a.tipo]?.tom}>{ALERTA[a.tipo]?.rotulo ?? a.tipo}</Etiqueta>
+                          {"resolvido_em" in a && a.resolvido_em ? <Etiqueta tom="ok" className="ml-2">{(a as { status?: string }).status === "explicado" ? "explicado" : "resolvido"} {data(String(a.resolvido_em).slice(0, 10))}</Etiqueta> : null}
                           <p className="mt-1 font-bold">{rotuloUnidade(a.unidade_id, eu.unidades)}{a.dia ? `, ${data(a.dia)} (${diaSemana(a.dia)})` : ""}
                             {a.detalhe?.loja_fechada ? <Etiqueta tom="atencao" className="ml-2">loja fechada nesse dia</Etiqueta> : null}</p>
                           <p className="text-sm text-suave">{textoAlerta(a)}</p>
                         </div>
+                        <ConversaAviso tipo={a.tipo} referencia={a.referencia} mensagens={Number((a as { mensagens?: number }).mensagens ?? 0)}
+                          titulo={`${ALERTA[a.tipo]?.rotulo ?? a.tipo} · ${rotuloUnidade(a.unidade_id, eu.unidades)}${a.dia ? `, ${data(a.dia)}` : ""}. ${textoAlerta(a)}`} />
                       </Painel>
                     </li>
                   ))}
@@ -136,8 +173,8 @@ export function Caixa() {
               )}
             </Secao>
 
-            <Secao titulo="Conferência por dia" descricao="Cada forma de pagamento do fechamento e se o dinheiro foi achado no extrato.">
-              {!linhas.length ? <Vazio titulo="Nenhum fechamento no período" icone={<Landmark className="h-6 w-6" />} /> : (
+            <Secao titulo="Conferência por dia" descricao={`Cada forma de pagamento do fechamento e se o dinheiro foi achado no extrato. ${data(c.desde)} a ${data(c.ate)}.`}>
+              {!linhas.length ? <Vazio titulo={ativos ? "Nenhum dia com esses filtros" : "Nenhum fechamento no período"} icone={<Landmark className="h-6 w-6" />} /> : (
                 <Tabela rotulo="Conferência por dia e loja">
                   <thead><tr><th className={th}>Dia</th><th className={th}>Loja</th><th className={th}>Total do caixa</th><th className={th}>Formas de pagamento</th></tr></thead>
                   <tbody>{linhas.map((l) => (

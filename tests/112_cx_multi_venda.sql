@@ -45,6 +45,39 @@ select t.ok('multi_venda','o aviso antigo pelo total do dia não existe mais',
 select t.ok('multi_venda','central mostra o informativo como baixa prioridade',
   (select count(*) from cx.alertas where tipo = 'multi_outro_dia' and status = 'aberto') > 0);
 
+-- conversa com o agente no aviso (pedido 07/11)
+select set_config('t.ref', (select referencia from cx.alertas where unidade_id = 'sorocaba' and tipo = 'caixa_multi_sem_venda' and status = 'aberto' limit 1), false);
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select public.painel_aviso_escrever('caixa', 'caixa_multi_sem_venda', current_setting('t.ref'), 'Esse valor entrou duplicado, confere?', 'comentar');
+select t.ok('conversa','mensagem da pessoa fica no aviso',
+  jsonb_array_length(public.painel_aviso_conversa('caixa', 'caixa_multi_sem_venda', current_setting('t.ref'))->'mensagens') = 1);
+reset role; select t.sem_jwt();
+select t.ok('conversa','agente vê a mensagem pendente com o aviso',
+  exists (select 1 from jsonb_array_elements(public.agente_avisos_pendentes()) x where x->>'referencia' = current_setting('t.ref') and x->'aviso'->>'status' = 'aberto'));
+select public.agente_aviso_responder((select id from core.avisos_conversa where referencia = current_setting('t.ref') and papel = 'pessoa'), 'Conferi: não há venda nem parcela desse valor.');
+select t.ok('conversa','resposta do agente fecha a pendência',
+  not exists (select 1 from jsonb_array_elements(public.agente_avisos_pendentes()) x where x->>'referencia' = current_setting('t.ref'))
+  and (select count(*) from core.avisos_conversa where referencia = current_setting('t.ref')) = 2);
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a002');
+select t.erro('conversa','gerente não marca aviso como explicado',
+  $q$select public.painel_aviso_escrever('caixa', 'caixa_multi_sem_venda', current_setting('t.ref'), 'explicado', 'explicar')$q$, 'permiss');
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select public.painel_aviso_escrever('caixa', 'caixa_multi_sem_venda', current_setting('t.ref'), 'Parcela lançada errado, já corrigida na loja.', 'explicar');
+reset role; select t.sem_jwt();
+select cx.recalcular();
+select t.ok('conversa','aviso explicado não volta a abrir',
+  exists (select 1 from cx.alertas where referencia = current_setting('t.ref') and status = 'explicado')
+  and not exists (select 1 from cx.alertas where referencia = current_setting('t.ref') and status = 'aberto'));
+set role authenticated;
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select public.painel_aviso_escrever('caixa', 'caixa_multi_sem_venda', current_setting('t.ref'), 'Volta a cobrar.', 'reabrir');
+reset role; select t.sem_jwt();
+select t.ok('conversa','reabrir volta a cobrar o aviso',
+  exists (select 1 from cx.alertas where referencia = current_setting('t.ref') and status = 'aberto'));
+delete from core.avisos_conversa where referencia = current_setting('t.ref');
+
 -- regras editáveis: dias depois = 1 → a venda lançada 2 dias depois deixa de casar
 update core.config set valor = '1' where chave = 'cx.multi_dias_depois';
 select cx.recalcular();

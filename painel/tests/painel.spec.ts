@@ -277,6 +277,34 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
   });
 
+  test("caixa: filtros de período, forma e busca por valor", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/caixa");
+    await expect(page.getByText(/Venda 0004209916/)).toBeVisible();
+    await page.getByLabel("Buscar").fill("370,00");
+    await expect(page.getByText(/Venda 0004209916/)).toBeVisible();
+    await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
+    await page.getByLabel("Buscar").fill("");
+    await page.getByRole("group", { name: "Forma" }).getByRole("button", { name: "Pix" }).click();
+    await expect(page.getByText(/Venda 0004209916/)).toHaveCount(0);
+    await expect(page.getByText(/não achados no extrato/)).toBeVisible();
+    await page.getByLabel("Período").selectOption("mes_passado");
+    await expect.poll(() => chamadas.filter((c) => c.fn === "painel_caixa").at(-1)?.corpo).toMatchObject({ p_de: expect.stringMatching(/^\d{4}-\d{2}-01$/) });
+    await page.getByRole("button", { name: /Limpar filtros/ }).click();
+    await expect(page.getByText(/Venda 0004209916/)).toBeVisible();
+  });
+
+  test("caixa: falar com o agente sobre um aviso", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/caixa");
+    await page.getByRole("button", { name: /Falar com o agente/ }).first().click();
+    await expect(page.getByText(/Um deles é duplicado/)).toBeVisible();
+    await page.getByLabel("Sua mensagem").fill("Pode conferir qual dos três é o duplicado?");
+    await page.getByRole("button", { name: "Enviar para o agente" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_aviso_escrever")?.corpo)
+      .toMatchObject({ p_area: "caixa", p_texto: "Pode conferir qual dos três é o duplicado?", p_acao: "comentar" });
+  });
+
   test("cobranças mostra a carteira, o atraso e as divergências com o Asaas", async ({ page }) => {
     await instalar(page, { logado: "aal2" });
     await page.goto("/cobrancas");
@@ -478,7 +506,7 @@ test.describe("multicrediário × ADM", () => {
     await expect(page.getByText("o ADM somou a entrada de R$ 300,00")).toBeVisible();
     await expect(page.getByText("Proposta Simplificada")).toBeVisible();
     await page.getByRole("tab", { name: /Vendas do dia/ }).click();
-    await expect(page.getByText("Não está no ADM")).toBeVisible();
+    await expect(page.getByRole("table").getByText("Não está no ADM")).toBeVisible();
     await expect(page.getByText("Limite excedido")).toBeVisible();
   });
 

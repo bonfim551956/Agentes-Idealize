@@ -7,10 +7,12 @@ import { rpc } from "../lib/api";
 import { data, numero, rotuloUnidade } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Vazio, cx, entradaCls } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, type Periodo } from "../ui/Filtros";
+import { ConversaAviso } from "../ui/ConversaAviso";
 
 // Tudo o que precisa de alguém num lugar só: arquivos para conferir ou com erro, avisos do Caixa, Cobranças,
 // Multicrediário, pendências financeiras e incidentes. Cada item leva para a tela onde se resolve.
-type Item = { area: string; tipo: string; gravidade: number; unidade_id: string | null; dia: string | null; titulo: string; texto: string; link: string; desde: string };
+type Item = { area: string; tipo: string; gravidade: number; unidade_id: string | null; dia: string | null; titulo: string; texto: string; link: string; desde: string; ref?: string | null; mensagens?: number | null };
 type Area = { area: string; itens: number; urgentes: number; link: string };
 type Dados = { total: number; urgentes: number; areas: Area[]; itens: Item[] };
 
@@ -24,10 +26,17 @@ export function Central() {
   const { eu } = useSessao();
   const [area, setArea] = useState("");
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [so, setSo] = useState(false);
+  const [situ, setSitu] = useState<string[]>([]);
+  const [per, setPer] = useState<Periodo | null>(null);
+  const [busca, setBusca] = useState("");
   const q = useQuery({ queryKey: ["central", unidade], queryFn: () => rpc<Dados>("painel_central", { p_unidade: unidade || null }), refetchInterval: 120_000 });
   const d = q.data;
-  const itens = (d?.itens ?? []).filter((i) => (!area || i.area === area) && (!so || i.gravidade === 1));
+  const GRAV: Record<number, string> = { 1: "urgente", 2: "atencao", 3: "informativo" };
+  const base = (d?.itens ?? []).filter((i) => (!per || noPeriodo(i.dia, per)) && casaBusca(busca, i.titulo, i.texto, i.dia ? data(i.dia) : null));
+  const itens = base.filter((i) => (!area || i.area === area) && (!situ.length || situ.includes(GRAV[i.gravidade] ?? "informativo")));
+  const conta = (g: number) => base.filter((i) => (!area || i.area === area) && i.gravidade === g).length;
+  const ativos = (area ? 1 : 0) + (situ.length ? 1 : 0) + (per ? 1 : 0) + (busca.trim() ? 1 : 0);
+  const limpar = () => { setArea(""); setSitu([]); setPer(null); setBusca(""); };
   return (
     <>
       <Cabecalho titulo="Tudo para resolver"
@@ -45,15 +54,24 @@ export function Central() {
               </button>
             ))}
           </div>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
-            <label className="sr-only" htmlFor="ce-un">Loja</label>
-            <select id="ce-un" className={entradaCls + " sm:max-w-xs"} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-              <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-            </select>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={so} onChange={(e) => setSo(e.target.checked)} />Só urgentes</label>
-            {area && <button className="text-sm text-lente underline" onClick={() => setArea("")}>Ver todas as áreas</button>}
-          </div>
-          {!itens.length ? <Vazio titulo="Nada para resolver" icone={<CheckCircle2 className="h-6 w-6" />}>Tudo em dia por aqui.</Vazio> : (
+          <BarraFiltros ativos={ativos} aoLimpar={limpar}>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr]">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="flex items-center gap-2 text-sm whitespace-nowrap"><input type="checkbox" checked={!!per} onChange={(e) => setPer(e.target.checked ? periodo("7") : null)} />Filtrar por data</label>
+                {per && <FiltroPeriodo id="ce-per" valor={per} aoMudar={setPer} />}
+              </div>
+              <FiltroBusca id="ce-busca" valor={busca} aoMudar={setBusca} dica="Buscar valor (ex.: 165,27), OS, venda ou palavra" />
+            </div>
+            <div className="sm:max-w-xs">
+              <label className="sr-only" htmlFor="ce-un">Loja</label>
+              <select id="ce-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+            </div>
+            <FiltroOpcoes rotulo="Situação" valor={situ} aoMudar={setSitu}
+              opcoes={[{ id: "urgente", rotulo: "Urgente", n: conta(1) }, { id: "atencao", rotulo: "Atenção", n: conta(2) }, { id: "informativo", rotulo: "Informativo", n: conta(3) }]} />
+          </BarraFiltros>
+          {!itens.length && ativos ? <Vazio titulo="Nada com esses filtros" icone={<CheckCircle2 className="h-6 w-6" />} /> : !itens.length ? <Vazio titulo="Nada para resolver" icone={<CheckCircle2 className="h-6 w-6" />}>Tudo em dia por aqui.</Vazio> : (
             <ul className="flex flex-col gap-2">
               {itens.map((i, k) => (
                 <li key={`${i.area}-${k}`}>
@@ -66,7 +84,11 @@ export function Central() {
                       <p className="font-bold">{i.titulo}</p>
                       <p className="text-sm text-suave">{i.texto}</p>
                     </div>
-                    <Link to={i.link} className="shrink-0 rounded-medio border border-linha px-3 py-2 text-sm font-bold hover:bg-elevada">Resolver</Link>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {i.ref && <ConversaAviso tipo={i.ref.split("|")[0]} referencia={i.ref.split("|").slice(1).join("|")} mensagens={Number(i.mensagens ?? 0)}
+                        titulo={`${i.area} · ${i.tipo} · ${i.titulo}. ${i.texto}`} />}
+                      <Link to={i.link} className="shrink-0 rounded-medio border border-linha px-3 py-2 text-sm font-bold hover:bg-elevada">Resolver</Link>
+                    </div>
                   </Painel>
                 </li>
               ))}

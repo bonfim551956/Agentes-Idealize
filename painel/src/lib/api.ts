@@ -163,9 +163,10 @@ export type CaixaPainel = {
   sincronizacao: { ativa: boolean; agente: string; ultima: { em: string; desde: string; ate: string; dias: number; casados: number } | null };
   fontes: { forma: string; fonte: "banco" | "asaas" | "stone" | "deposito" | "nenhuma"; rotulo: string }[];
   cobertura: { unidade_id: string; fonte: string; ate: string | null }[];
-  conferencia: { unidade_id: string; dia: string; forma: string; sistema: number; quantidade: number; achado: number; faltando: number }[];
+  conferencia: { unidade_id: string; dia: string; forma: string; sistema: number; quantidade: number; achado: number; faltando: number; valores?: number[] }[];
   dias: { unidade_id: string; dia: string; status_adm: string | null; caixa: number | null; soma_formas: number; deposito_valor: number | null }[];
-  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null }[];
+  alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null; resolvido_em?: string | null }[];
+  resolvidos?: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null; resolvido_em: string; resolvido_por: string | null }[];
 };
 
 export type CobrancasPainel = {
