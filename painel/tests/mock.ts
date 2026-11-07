@@ -102,6 +102,16 @@ export const RPC: Record<string, unknown> = {
       movimento: null, pode_tratar: true, pode_aceitar: true },
     { id: 32, tipo: "sem_classificacao", unidade_id: "sao_vicente", material: true, referencia: "", detalhe: null, criado_em: ha(1200), lancamento: null,
       movimento: { data: "2026-10-20", valor: 19.2, sentido: "debito", conta_id: "sicredi_sv", descricao: "PIX ENVIADO DGFIN ******8909" }, pode_tratar: true, pode_aceitar: true },
+    { id: 34, tipo: "duplicidade_suspeita", unidade_id: "sao_vicente", material: true, referencia: "", detalhe: null, criado_em: ha(900),
+      lancamento: { numero: 250, valor: 99.99, natureza: "despesa", sentido: "saida", categoria_id: "sistemas", data_competencia: "2026-09-14", descricao: "Z Api Io", fornecedor: "Z Api Io", conta: "Cartão Sicredi SV", categoria: "Sistemas" },
+      movimento: null, pode_tratar: true, pode_aceitar: true,
+      parecidos: [
+        { numero: 249, data: "2026-09-14", valor: 99.99, fornecedor: "Z Api Io", categoria: "Sistemas", este: false },
+        { numero: 250, data: "2026-09-14", valor: 99.99, fornecedor: "Z Api Io", categoria: "Sistemas", este: true },
+        { numero: 251, data: "2026-09-14", valor: 99.99, fornecedor: "Z Api Io", categoria: "Sistemas", este: false }] },
+    { id: 35, tipo: "sem_classificacao", unidade_id: "sao_vicente", material: false, referencia: "", detalhe: null, criado_em: ha(800),
+      lancamento: { numero: 237, valor: 266.04, natureza: "despesa", sentido: "saida", categoria_id: null, data_competencia: "2026-09-30", descricao: "Bravo City Sorocaba", fornecedor: "Bravo City Sorocaba", conta: "Cartão Sicredi SV", categoria: null },
+      movimento: null, pode_tratar: true, pode_aceitar: true },
     { id: 33, tipo: "divergencia", unidade_id: "campinas", material: false, referencia: "", detalhe: { diferenca: 0.02 }, criado_em: ha(2000), lancamento: null, movimento: null, pode_tratar: true, pode_aceitar: true },
   ],
   painel_financeiro: {
@@ -339,6 +349,8 @@ export const RPC: Record<string, unknown> = {
       { id: 2, tipo: "caixa_nao_fechado", referencia: "sao_vicente:2026-10-22", unidade_id: "sao_vicente", dia: "2026-10-22", aberto_em: ha(600), detalhe: {} },
     ],
   },
+  painel_categorias: [{ id: "viagens", nome: "Viagens e hospedagem", grupo: "Despesas administrativas" }, { id: "sistemas", nome: "Sistemas", grupo: "Tecnologia" }],
+  painel_pendencia_decidir: { resolvidas: 1 },
   painel_aprovar: "pronta", painel_plataforma_pausar: null, painel_reconciliar: "validando", painel_pendencia_tratar: null,
   painel_incidente_tratar: null, painel_fechamento_decidir: "aprovado", painel_agente_status: null, painel_papel_conceder: null,
 };

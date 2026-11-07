@@ -79,8 +79,10 @@ export type Incidente = {
 export type Pendencia = {
   id: number; tipo: string; unidade_id: string | null; material: boolean; referencia: string; detalhe: unknown; criado_em: string;
   lancamento: { numero: number; valor: number; natureza: string; sentido: string; categoria_id: string | null;
-    data_competencia: string; descricao: string | null } | null;
+    data_competencia: string; descricao: string | null; fornecedor?: string | null; conta?: string | null; categoria?: string | null } | null;
   movimento: { data: string; valor: number; sentido: string; conta_id: string; descricao: string } | null;
+  parecidos?: { numero: number; data: string; valor: number; fornecedor: string | null; categoria: string | null; este: boolean }[] | null;
+  fatura?: { vencimento: string; soma_compras: number; pago: number | null; compras: number; status: string } | null;
   pode_tratar: boolean; pode_aceitar: boolean;
 };
 

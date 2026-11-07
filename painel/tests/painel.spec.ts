@@ -354,3 +354,25 @@ test.describe("estados e permissões", () => {
     expect(chamadas.find((c) => c.fn === "painel_fechamento_decidir")!.corpo).toEqual({ p_fechamento: "fe1", p_aprovar: true, p_hash: HASH });
   });
 });
+
+test.describe("pendências resolvidas no card", () => {
+  test("sem categoria: escolhe a categoria e salva com 'usar sempre'", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/pendencias");
+    await page.getByLabel("Categoria").selectOption("viagens");
+    await expect(page.getByLabel("Usar sempre para “Bravo City Sorocaba”")).toBeChecked();
+    await page.getByRole("button", { name: "Salvar categoria" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_pendencia_decidir")?.corpo).toEqual(
+      { p_pendencia: 35, p_decisao: "categoria", p_categoria: "viagens", p_lembrar: true });
+  });
+
+  test("cobrança em dobro: mostra os 3 parecidos e decide 'são diferentes'", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/pendencias");
+    await expect(page.getByRole("cell", { name: "250 (esta)" })).toBeVisible();
+    await page.getByRole("button", { name: "São cobranças diferentes (manter as 3)" }).click();
+    await page.getByRole("button", { name: "Manter todas" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_pendencia_decidir")?.corpo).toEqual(
+      { p_pendencia: 34, p_decisao: "diferentes" });
+  });
+});

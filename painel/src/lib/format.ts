@@ -80,9 +80,9 @@ export const STATUS_INTEGRACAO: Record<string, { rotulo: string; tom: Tom }> = {
 export const TIPO_PENDENCIA: Record<string, string> = {
   divergencia: "Valores não batem",
   ambiguidade: "Mais de um lançamento possível",
-  sem_classificacao: "Sem categoria",
+  sem_classificacao: "Lançamento sem categoria",
   sem_comprovante: "Pagamento sem comprovante",
-  duplicidade_suspeita: "Possível duplicidade",
+  duplicidade_suspeita: "Possível cobrança em dobro",
   rateio_desbalanceado: "Rateio não fecha",
   transferencia_sem_par: "Transferência sem a outra ponta",
   fatura_divergente: "Fatura do cartão não bate",

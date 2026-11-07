@@ -42,6 +42,8 @@ echo "→ testes dos ajustes (Kommo tempo médio, RH admissão/aniversário)"
 $P -f tests/101_extras.sql
 echo "→ testes da central de envio de arquivos"
 $P -f tests/103_envios.sql
+echo "→ testes das pendências resolvidas pelo painel"
+$P -f tests/104_pendencias.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
