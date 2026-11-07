@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -46,6 +46,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
     ] },
     { titulo: "Acompanhar", itens: [
       ...(eu.pode.consultar_global ? [{ para: "/relatorio", rotulo: "Relatório do dia", icone: <Newspaper className={ic} /> }] : []),
+      ...(eu.pode.consultar_global ? [{ para: "/conteudo", rotulo: "Conteúdo", icone: <Clapperboard className={ic} /> }] : []),
       { para: "/", rotulo: "Visão geral", icone: <Gauge className={ic} /> },
       ...(eu.pode.consultar_global ? [{ para: "/mercado", rotulo: "Mercado e concorrentes", icone: <Radar className={ic} /> }] : []),
       { para: "/tarefas", rotulo: "Tarefas", icone: <ListChecks className={ic} /> },

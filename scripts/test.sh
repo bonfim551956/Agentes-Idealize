@@ -46,6 +46,8 @@ echo "→ testes das pendências resolvidas pelo painel"
 $P -f tests/104_pendencias.sql
 echo "→ testes do relatório do dia e da inteligência"
 $P -f tests/105_intel.sql
+echo "→ testes dos agentes de conteúdo"
+$P -f tests/106_conteudo.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"

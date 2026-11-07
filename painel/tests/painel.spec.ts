@@ -185,7 +185,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
+      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -395,5 +395,41 @@ test.describe("relatório do dia e concorrentes", () => {
     await page.getByLabel("Instagram").fill("otica.nova");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
+  });
+});
+
+test.describe("conteúdo: ideias, avaliador e roteirista", () => {
+  test("roteiro do dia aparece cena por cena com a nota do Avaliador", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/conteudo");
+    await expect(page.getByRole("heading", { name: "Conteúdo do dia" })).toBeVisible();
+    await expect(page.getByText("91/100")).toBeVisible();
+    await expect(page.getByText("2 ÓCULOS DE GRAU R$ 199,90")).toBeVisible();
+    await expect(page.getByText("3 aprovadas, 7 descartadas")).toBeVisible();
+  });
+
+  test("pedir ajuste exige o pedido e manda para o Roteirista", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/conteudo");
+    await page.getByRole("button", { name: "Pedir ajuste" }).click();
+    await page.getByLabel("Pedido de ajuste").fill("Comece pela etiqueta");
+    await page.getByRole("button", { name: "Pedir ajuste" }).last().click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_roteiro_decidir")?.corpo).toMatchObject({ p_id: 7, p_acao: "ajuste", p_texto: "Comece pela etiqueta" });
+  });
+
+  test("ideia descartada pode ser mandada para roteiro e regras são salvas pela tela", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/conteudo");
+    await page.getByRole("tab", { name: /Ideias avaliadas/ }).click();
+    await expect(page.getByText("Sem oferta e sem prova.")).toBeVisible();
+    await page.getByRole("button", { name: "Mandar roteirizar" }).click();
+    await page.getByRole("button", { name: "Mandar roteirizar" }).last().click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_ideia_conteudo_promover")?.corpo).toEqual({ p_id: 22 });
+    await page.getByRole("tab", { name: "Regras dos agentes" }).click();
+    await page.getByLabel("Roteiros por dia").fill("5");
+    await page.getByLabel("Carrossel").check();
+    await page.getByRole("button", { name: "Salvar regras" }).click();
+    await expect.poll(() => (chamadas.find((c) => c.fn === "painel_conteudo_regras_salvar")?.corpo as { p_regras?: unknown })?.p_regras)
+      .toMatchObject({ roteiros_por_dia: 5, formatos: ["reel", "carrossel"] });
   });
 });

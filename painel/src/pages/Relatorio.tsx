@@ -13,12 +13,14 @@ type AgenteDia = { id: string; nome: string; status: string; rodadas: number; fa
   rotulo_novos: string; rotulo_abertos: string };
 type Noticia = { titulo: string; fonte: string | null; url: string; impacto: string | null; tema: string | null; relevancia: number };
 type AnuncioRel = { concorrente: string; praca: string | null; titulo: string | null; inicio?: string | null; dias?: number; link: string | null };
+type RoteiroRel = { id: number; titulo: string; gancho: string; formato: string; loja: string | null; nota: number | null; duracao_s: number | null };
 type IdeiaRel = { id: number; titulo: string; evidencia: string | null; como_aplicar: string | null; link: string | null; concorrente: string | null };
 type Conteudo = {
   dia: string; gerado_em: string;
   totais: { agentes: number; rodadas: number; falhas: number; ideias: number };
   prioridades: Prioridade[]; agentes: AgenteDia[]; mercado: Noticia[];
   concorrentes: { novos: AnuncioRel[]; longos: AnuncioRel[]; ideias: IdeiaRel[] };
+  conteudo?: RoteiroRel[];
 };
 type Rel = { dia: string; existe: boolean; versao: number | null; conteudo: Conteudo | null; pode_gerar: boolean; dias: string[] };
 
@@ -120,6 +122,20 @@ export function Relatorio() {
               ))}
             </div>
           </Secao>
+
+          {c.conteudo && c.conteudo.length > 0 && (
+            <Secao titulo="Roteiros prontos para gravar" descricao={<Link to="/conteudo" className="text-lente hover:underline">Abrir a tela Conteúdo para aprovar →</Link>}>
+              <Painel className="divide-y divide-linha">
+                {c.conteudo.map((x) => (
+                  <div key={x.id} className="p-4 text-sm">
+                    <Etiqueta tom="atencao" className="mr-2">{x.nota != null ? `nota ${x.nota}` : "para aprovar"}</Etiqueta>
+                    <b>{x.titulo}</b>{x.loja && <span className="text-suave"> · {x.loja}</span>}
+                    <p className="mt-1 text-suave">Gancho: "{x.gancho}"</p>
+                  </div>
+                ))}
+              </Painel>
+            </Secao>
+          )}
 
           <div className="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
             <Secao titulo="Mercado hoje" descricao="O que o Radar do Mercado achou nas últimas 24 horas.">
