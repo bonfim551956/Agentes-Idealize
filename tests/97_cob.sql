@@ -150,6 +150,27 @@ select t.ok('painel','alertas mais graves primeiro (cobrança sem parcela)', pub
 reset role;
 select t.sem_jwt();
 
+-- C. Carnê vendido antes do ADM: cobranças do Asaas sem parcela no ADM não viram aviso (só contagem à parte)
+update core.config set valor = (cob._hoje() - 100)::text where chave = 'cob.adm_inicio';
+select t.sync_cob(t.lote_cob(jsonb_build_array(
+  jsonb_build_object('id','pay_v1','valor',70,'vencimento',t.cd(-150),'status','RECEIVED','pagamento',t.cd(-150),'parcelamento','ins_velho'),
+  jsonb_build_object('id','pay_v2','valor',70,'vencimento',t.cd(-60),'status','OVERDUE','parcelamento','ins_velho'),
+  jsonb_build_object('id','pay_v3','valor',70,'vencimento',t.cd(30),'status','PENDING','parcelamento','ins_velho'))));
+select t.ok('anterior','cobrança de carnê anterior ao ADM não vira aviso; a órfã nova continua',
+  not exists (select 1 from cob.alertas where referencia like 'asaas:pay_v%' and status = 'aberto')
+  and exists (select 1 from cob.alertas where referencia = 'asaas:pay_z' and status = 'aberto'));
+select t.jwt('00000000-0000-0000-0000-00000000a001');
+select t.ok('anterior','tela mostra a contagem das cobranças antigas',
+  (public.painel_cob_regras()->'anteriores'->>'vencidas')::int = 1 and (public.painel_cob_regras()->'anteriores'->>'cobrancas')::int = 2,
+  public.painel_cob_regras()::text);
+select t.erro('anterior','data no futuro é recusada', format('select public.painel_cob_regras_salvar(%L)', cob._hoje() + 5), 'data de início');
+select public.painel_cob_regras_salvar(cob._hoje() - 300, 'teste');
+select t.ok('anterior','mudar a data pela tela refaz a conferência',
+  exists (select 1 from cob.alertas where referencia = 'asaas:pay_v2' and status = 'aberto')
+  and exists (select 1 from core.auditoria where acao = 'cob_regras_alteradas'));
+reset role;
+select t.sem_jwt();
+
 select t.ok('auditoria','cadeia íntegra', core.verificar_auditoria() is null);
 update core.agentes set status = 'pausado' where id = 'cobrancas';
 update core.config set valor = 'false' where chave = 'cob.sync.ativo';

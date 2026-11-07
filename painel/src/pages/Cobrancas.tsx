@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, HandCoins } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type CobrancasPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
-import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
+import { traduzir } from "../lib/erros";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   cobranca_sem_parcela: { rotulo: "Cobrança ativa sem parcela no sistema", tom: "critico" },
@@ -29,6 +30,51 @@ function texto(a: CobrancasPainel["alertas"][number]): { titulo: string; detalhe
     case "entrada_pendente": return { titulo: os, detalhe: `Entrada de ${dinheiro(Number(d.valor))} combinada para ${data(String(d.combinada_para))} e não paga.` };
     default: return { titulo: a.referencia, detalhe: "" };
   }
+}
+
+type Regras = { adm_inicio: string; pode_editar: boolean;
+  anteriores: { cobrancas: number; vencidas: number; valor_vencido: number; valor_a_vencer: number } };
+
+// Carnês vendidos antes de o crediário ser lançado no ADM: as cobranças deles no Asaas não viram aviso, só esta contagem.
+function RegraAnterior() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["cob-regras"], queryFn: () => rpc<Regras>("painel_cob_regras") });
+  const [dataIni, setDataIni] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvo, setSalvo] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  if (q.isLoading) return <Carregando linhas={2} />;
+  if (q.error || !q.data) return <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} />;
+  const r = q.data;
+  const valor = dataIni ?? r.adm_inicio;
+  async function salvar() {
+    setEnviando(true); setErro(null); setSalvo(false);
+    try {
+      await rpc("painel_cob_regras_salvar", { p_adm_inicio: valor, p_motivo: null });
+      setDataIni(null); setSalvo(true);
+      void qc.invalidateQueries({ queryKey: ["cob-regras"] }); void qc.invalidateQueries({ queryKey: ["cobrancas"] });
+    } catch (e) { setErro(traduzir(e).message); } finally { setEnviando(false); }
+  }
+  return (
+    <Painel className="flex flex-col gap-4 p-4 md:flex-row md:items-end md:justify-between">
+      <div className="max-w-leitura">
+        <p className="font-bold">Carnês de antes do ADM</p>
+        <p className="text-sm text-suave">
+          {r.anteriores.cobrancas > 0
+            ? <>{numero(r.anteriores.cobrancas)} cobranças ativas no Asaas são de carnês vendidos antes de o crediário ser lançado no ADM: {numero(r.anteriores.vencidas)} vencidas ({dinheiro(r.anteriores.valor_vencido)}) e {dinheiro(r.anteriores.valor_a_vencer)} a vencer. Elas não entram nos avisos abaixo.</>
+            : "Nenhuma cobrança ativa de carnê anterior ao ADM."}
+        </p>
+        {erro && <p role="alert" className="mt-1 text-sm font-bold text-critico">{erro}</p>}
+        {salvo && <p role="status" className="mt-1 text-sm font-bold text-ok">Data salva e conferência refeita.</p>}
+      </div>
+      <div className="flex items-end gap-2">
+        <Campo id="cb-adm-ini" rotulo="Crediário lançado no ADM desde">
+          <input id="cb-adm-ini" type="date" className={entradaCls} disabled={!r.pode_editar} value={valor} onChange={(e) => setDataIni(e.target.value)} />
+        </Campo>
+        {r.pode_editar && <Botao carregando={enviando} disabled={valor === r.adm_inicio} onClick={salvar}>Salvar</Botao>}
+      </div>
+    </Painel>
+  );
 }
 
 export function Cobrancas() {
@@ -79,6 +125,7 @@ export function Cobrancas() {
             </dl>
 
             <Secao titulo="O que precisa de atenção" descricao="Os avisos somem sozinhos quando a parcela é paga, baixada ou corrigida.">
+              {c.sincronizacao.asaas_lojas.length > 0 && <div className="mb-4"><RegraAnterior /></div>}
               {!alertas.length ? (
                 <Vazio titulo="Nada fora do lugar" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {c.sincronizacao.ultima ? "Nenhum atraso nem divergência na última leitura." : "Os avisos aparecem depois da primeira leitura."}

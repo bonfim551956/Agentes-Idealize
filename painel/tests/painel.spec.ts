@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EU_GERENTE, HASH, instalar, jwt } from "./mock";
+import { EU_GERENTE, HASH, RPC, instalar, jwt } from "./mock";
 
 test.describe("entrada", () => {
   test("senha errada mostra mensagem clara", async ({ page }) => {
@@ -269,6 +269,16 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("R$ 3.493,64")).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("parcela_vencida");
     await expect(page.getByText(/não corresponde a nenhuma parcela/)).toHaveCount(0);
+  });
+
+  test("cobranças: carnês de antes do ADM ficam fora dos avisos e a data muda pela tela", async ({ page }) => {
+    const base = RPC.painel_cobrancas as Record<string, unknown>;
+    const chamadas = await instalar(page, { logado: "aal2", rpc: { painel_cobrancas: { ...base, sincronizacao: { ativa: true, agente: "ativo", ultima: { em: "2026-11-07T17:40:00Z" }, asaas_lojas: ["sao_vicente"] } } } });
+    await page.goto("/cobrancas");
+    await expect(page.getByText(/261 cobranças ativas no Asaas são de carnês vendidos antes/)).toBeVisible();
+    await page.getByLabel("Crediário lançado no ADM desde").fill("2026-08-01");
+    await page.getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_cob_regras_salvar")?.corpo).toEqual({ p_adm_inicio: "2026-08-01", p_motivo: null });
   });
 
   test("RH mostra prazos, quadro e a lista do mês para a contabilidade", async ({ page }) => {
