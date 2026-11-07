@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
-  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard,
+  ServerCog, ShieldAlert, Sun, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type Resumo } from "../lib/api";
@@ -54,6 +54,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/financeiro", rotulo: "Financeiro por loja", icone: <Wallet className={ic} /> },
       { para: "/caixa", rotulo: "Caixa das lojas", icone: <Landmark className={ic} /> },
       { para: "/cobrancas", rotulo: "Cobranças", icone: <HandCoins className={ic} /> },
+      ...(eu.pode.consultar_global ? [{ para: "/multicrediario", rotulo: "Multicrediário", icone: <CreditCard className={ic} /> }] : []),
       { para: "/laboratorio", rotulo: "Laboratório", icone: <FlaskConical className={ic} /> },
       { para: "/comercial", rotulo: "Comercial", icone: <MessagesSquare className={ic} /> },
       { para: "/marketing", rotulo: "Marketing", icone: <Megaphone className={ic} /> },

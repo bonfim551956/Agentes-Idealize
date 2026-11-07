@@ -16,3 +16,7 @@ $$ select nullif(auth.jwt()->>'sub', '')::uuid $$;
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.jwt(), auth.uid() to anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
+
+-- pgcrypto no esquema extensions (como no Supabase)
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;

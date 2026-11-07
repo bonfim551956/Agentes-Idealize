@@ -185,7 +185,7 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     const secoes: [string, string][] = [
       ["/", "Plataforma operando"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
-      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
+      ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
       ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
@@ -395,6 +395,33 @@ test.describe("relatório do dia e concorrentes", () => {
     await page.getByLabel("Instagram").fill("otica.nova");
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect.poll(() => chamadas.find((c) => c.fn === "painel_concorrente_salvar")?.corpo).toMatchObject({ p_id: null, p_nome: "Ótica Nova", p_instagram: "otica.nova" });
+  });
+});
+
+test.describe("multicrediário × ADM", () => {
+  test("mostra o dia, os avisos e as vendas conferidas", async ({ page }) => {
+    await instalar(page, { logado: "aal2" });
+    await page.goto("/multicrediario");
+    await expect(page.getByRole("heading", { name: "Multicrediário × ADM" })).toBeVisible();
+    await expect(page.getByText("o ADM somou a entrada de R$ 300,00")).toBeVisible();
+    await expect(page.getByText("Proposta Simplificada")).toBeVisible();
+    await page.getByRole("tab", { name: /Vendas do dia/ }).click();
+    await expect(page.getByText("Não está no ADM")).toBeVisible();
+    await expect(page.getByText("Limite excedido")).toBeVisible();
+  });
+
+  test("resolver exige nota e regras são salvas pela tela", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/multicrediario");
+    await page.getByRole("button", { name: "Resolver" }).first().click();
+    await page.getByLabel("O que foi feito ou por que está certo").fill("Corrigido no ADM");
+    await page.getByRole("button", { name: "Resolver" }).last().click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_multi_resolver")?.corpo).toEqual({ p_id: 31, p_nota: "Corrigido no ADM" });
+    await page.getByRole("tab", { name: "Regras" }).click();
+    await page.getByLabel("Diferença tolerada (R$)").fill("0,05");
+    await page.getByRole("button", { name: "Salvar regras" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_multi_ajustes_salvar")?.corpo)
+      .toMatchObject({ p_tolerancia: 0.05, p_adm_inicio: "2026-08-25", p_unidades: "saovicente" });
   });
 });
 
