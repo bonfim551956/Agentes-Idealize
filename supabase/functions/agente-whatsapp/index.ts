@@ -16,6 +16,8 @@ const banco: Banco = {
   conversarAviso: async (e, i) => (await db()`select wa.aviso_conversar(${e}, ${String(i.tipo ?? "")}, ${String(i.referencia ?? "")},
     ${String(i.mensagem_pessoa ?? "")}, ${String(i.resposta ?? "")}, ${i.explicar === true}) r`)[0].r,
   envioIniciar: async (e, u, nome, mime, tam, sha) => (await db()`select wa.envio_iniciar(${e}, ${u}, ${nome}, ${mime}, ${tam}, ${sha}) r`)[0].r,
+  avisosPegar: async (n) => (await db()`select public.agente_avisos_pegar(${n}) r`)[0].r,
+  avisoResponder: async (id, t) => (await db()`select public.agente_aviso_responder(${id}, ${t}) r`)[0].r,
   envioRecebido: async (id, tam, sha) => (await db()`select fin.envio_arquivo_recebido(${id}::uuid, ${tam}, ${sha}) r`)[0].r,
   // pergunta: transação SOMENTE LEITURA, com o papel wa_leitura e tempo máximo
   consultar: (q) => db().begin(async (t) => {

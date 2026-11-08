@@ -15,6 +15,8 @@ export type Banco = {
   envioIniciar: (entrada: number, unidade: string, nome: string, mime: string, tamanho: number, sha: string) => Promise<Record<string, unknown>>;
   envioRecebido: (id: string, tamanho: number, sha: string) => Promise<string>;
   cfg: (chave: string, padrao: string) => Promise<string>;
+  avisosPegar: (limite: number) => Promise<Record<string, unknown>[]>;
+  avisoResponder: (mensagem: number, texto: string) => Promise<unknown>;
 };
 export type Fora = {
   fetch: typeof fetch;
@@ -100,6 +102,29 @@ export async function receberArquivo(b: Banco, fora: Fora, m: Record<string, unk
   return `Recebi ${nome} de ${lojaNome}. O agente financeiro vai ler em até 5 minutos e eu te aviso aqui quando terminar.`;
 }
 
+/** "Falar com o agente" do painel: responde as mensagens pendentes dos avisos do Caixa. */
+export async function responderAvisos(b: Banco, fora: Fora): Promise<number> {
+  const pend = await b.avisosPegar(10);
+  if (!pend.length) return 0;
+  const modelo = await b.cfg("wa.modelo", "claude-sonnet-5-5");
+  let n = 0;
+  for (const m of pend) {
+    try {
+      const pergunta = `Aviso do Caixa (tipo ${String(m.tipo)}, loja ${String(m.unidade_id ?? "rede")}): ${JSON.stringify(m.aviso)}
+Conversa até aqui: ${JSON.stringify(m.conversa)}
+${m.acao === "explicar" ? "A pessoa marcou o aviso como explicado com a mensagem abaixo. Confirme em uma ou duas frases o que foi registrado e, se os dados mostrarem algo diferente, avise." : "Responda à última mensagem da pessoa:"}
+${String(m.texto ?? "")}`;
+      const texto = await responder(modelo, "a diretoria", [], pergunta,
+        { claude: fora.claude, consultar: b.consultar, conversarAviso: async () => ({ erro: "não disponível no painel" }) }, 8, "painel");
+      await b.avisoResponder(Number(m.id), texto);
+      n++;
+    } catch (e) {
+      console.error(JSON.stringify({ app: "agente-whatsapp", etapa: "aviso", erro: String((e as Error)?.message ?? e).slice(0, 200) }));
+    }
+  }
+  return n;
+}
+
 /** Ponto de entrada. POST ?s=<segredo> = webhook da Z-API; POST com x-worker-key = notificador (cron). */
 export async function atender(req: Request, env: Env, b: Banco, fora: Fora): Promise<Response> {
   if (req.method !== "POST") return json({ ok: true });
@@ -107,9 +132,10 @@ export async function atender(req: Request, env: Env, b: Banco, fora: Fora): Pro
   const wk = req.headers.get("x-worker-key");
   if (wk !== null) {
     if (!chaveCron || !iguais(wk, chaveCron)) return json({ erro: "não autorizado" }, 401);
-    if ((await b.cfg("wa.ativo", "false")) !== "true") return json({ desligado: true });
+    const respostasPainel = await responderAvisos(b, fora).catch(() => -1);
+    if ((await b.cfg("wa.ativo", "false")) !== "true") return json({ respostasPainel, whatsapp: "desligado" });
     const avisos = await b.prepararAvisos();
-    return json({ avisos, ...(await enviarFila(env, b, fora.fetch)) });
+    return json({ respostasPainel, avisos, ...(await enviarFila(env, b, fora.fetch)) });
   }
 
   const segredo = env("AGENTE_WA_SEGREDO");

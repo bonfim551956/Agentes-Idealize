@@ -13,7 +13,7 @@ type AgenteInicio = {
   id: string; nome: string; status: string; descricao: string | null;
   operando: { tipo: string; operacao: string; status: string; desde: string; unidade_id: string | null }[] | null;
   fila: number; esperando: number; ultima: string | null; ultima_status: string | null; rodadas: number; falhas: number;
-  novos: number; abertos: number; rotulo_novos: string; rotulo_abertos: string; tarefas: Tarefa[];
+  novos: number; abertos: number; rotulo_novos: string; rotulo_abertos: string; tarefas: Tarefa[]; atrasado?: boolean | null;
 };
 type ItemCentral = { area: string; gravidade: number; titulo: string; texto: string; link: string; unidade_id: string | null };
 
@@ -41,13 +41,14 @@ function CartaoAgente({ a, pend }: { a: AgenteInicio; pend: ItemCentral[] }) {
   const pausado = a.status !== "ativo";
   const urg = pend.filter((p) => p.gravidade === 1).length;
   return (
-    <Painel className={cx("flex flex-col gap-4 p-6", operando && "border-2 border-lente")}>
+    <Painel className={cx("flex flex-col gap-4 p-6", a.atrasado ? "border-2 border-critico" : operando && "border-2 border-lente")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-xl font-bold">{a.nome}</h3>
           {a.descricao && <p className="mt-1 line-clamp-2 text-sm text-suave">{a.descricao}</p>}
         </div>
-        {operando ? <Etiqueta tom="lente"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden />Operando agora</Etiqueta>
+        {a.atrasado ? <Etiqueta tom="critico">Atrasado: não rodou no horário</Etiqueta>
+          : operando ? <Etiqueta tom="lente"><Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden />Operando agora</Etiqueta>
           : pausado ? <Etiqueta tom="atencao">{a.status === "pausado" ? "Pausado" : a.status}</Etiqueta>
           : <Etiqueta tom="neutro">Em espera</Etiqueta>}
       </div>

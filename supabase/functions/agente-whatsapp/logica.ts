@@ -79,10 +79,17 @@ AGENTES
 - core.agentes(id, nome, status); core.tarefas(id, agente_id, tipo, operacao, unidade_id, status, motivo, criado_em, atualizado_em); core.incidentes(titulo, severidade, status, primeira_em).
 - rel.relatorios(dia, conteudo jsonb): relatório do dia; intel.noticias, intel.anuncios, intel.ideias; cont.roteiros; lab.*, mkt.*, sup.achados.`;
 
-export function sistema(nome: string, agora = new Date()): string {
-  return `Você é o agente da Idealize AI falando no WhatsApp com ${nome}, da diretoria das Óticas Idealize (lojas em Campinas, Sorocaba, São Vicente e Piracicaba, SP).
+export type Canal = "whatsapp" | "painel";
+
+export function sistema(nome: string, agora = new Date(), canal: Canal = "whatsapp"): string {
+  const onde = canal === "whatsapp"
+    ? `Você é o agente da Idealize AI falando no WhatsApp com ${nome}, da diretoria das Óticas Idealize (lojas em Campinas, Sorocaba, São Vicente e Piracicaba, SP).`
+    : `Você é o Agente do caixa da Idealize AI respondendo no painel, no botão "Falar com o agente" de um aviso do Caixa, para a diretoria das Óticas Idealize (lojas em Campinas, Sorocaba, São Vicente e Piracicaba, SP). A mensagem traz o aviso e a conversa até aqui.`;
+  return `${onde}
 Agora: ${hojeSP(agora)}.
-Responda em português do Brasil, curto e direto, no estilo de WhatsApp (frases curtas, listas com "•", *negrito* com um asterisco, sem tabelas e sem títulos com #). Valores no formato R$ 1.234,56 e datas dd/mm.
+Responda em português do Brasil, curto e direto (frases curtas, listas com "•", *negrito* com um asterisco, sem tabelas e sem títulos com #). Valores no formato R$ 1.234,56 e datas dd/mm.
+Fale como uma pessoa da operação: NUNCA cite nomes de tabelas, colunas, SQL ou termos técnicos do banco; diga "fechamento do caixa", "extrato do banco", "arquivo da Stone", "Asaas", "Multicrediário".
+Os dados do caixa vêm do ADM e são atualizados de hora em hora (8h às 20h); se a pessoa disser que corrigiu algo no ADM e o dado ainda não mudou, explique que a próxima conferência traz a correção.
 Para responder com dados, use a ferramenta consultar_banco (SQL de LEITURA, PostgreSQL). Nunca invente número: se não achar, diga que não achou e o que faltou (ex.: extrato ou arquivo da Stone não enviado).
 Quando a pessoa comentar ou explicar um aviso do Caixa, investigue e use conversar_aviso para registrar a conversa no aviso (aparece no painel). Só use explicar=true quando ela disser claramente que o aviso está explicado/certo e que o agente pode parar de cobrar.
 Você não altera nada nos sistemas (ADM, Stone, Asaas, Multicrediário, Kommo): se pedirem para apagar, lançar ou mandar mensagem a alguém, explique onde a própria pessoa faz isso. Para lançar extrato, ela pode mandar o arquivo aqui com o nome da loja na legenda.
@@ -125,7 +132,7 @@ export type Deps = {
 };
 
 /** Laço de conversa com ferramentas. Devolve o texto final para o WhatsApp. */
-export async function responder(modelo: string, nome: string, historico: { de: string; texto: string }[], pergunta: string, d: Deps, maxVoltas = 8): Promise<string> {
+export async function responder(modelo: string, nome: string, historico: { de: string; texto: string }[], pergunta: string, d: Deps, maxVoltas = 8, canal: Canal = "whatsapp"): Promise<string> {
   const msgs: Msg[] = [];
   for (const h of historico.slice(-8)) msgs.push({ role: h.de === "pessoa" ? "user" : "assistant", content: h.texto });
   // a API exige alternância começando por user
@@ -139,7 +146,7 @@ export async function responder(modelo: string, nome: string, historico: { de: s
   else juntas.push({ role: "user", content: pergunta });
 
   for (let i = 0; i < maxVoltas; i++) {
-    const r = await d.claude({ model: modelo, max_tokens: 2000, system: sistema(nome), tools: FERRAMENTAS, messages: juntas });
+    const r = await d.claude({ model: modelo, max_tokens: 2000, system: sistema(nome, new Date(), canal), tools: canal === "painel" ? FERRAMENTAS.slice(0, 1) : FERRAMENTAS, messages: juntas });
     const usos = r.content.filter((c) => c.type === "tool_use");
     if (!usos.length || r.stop_reason !== "tool_use") {
       return paraWhatsapp(r.content.filter((c) => c.type === "text").map((c) => c.text ?? "").join("\n")) || "Não consegui montar a resposta agora. Tente de novo em instantes.";

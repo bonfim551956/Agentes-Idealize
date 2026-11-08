@@ -66,6 +66,23 @@ do $$ declare ok1 boolean := true; ok2 boolean := false; ok3 boolean := false; b
   perform t.ok('wa','papel de leitura não vê CPF cru do Multicrediário', ok3);
 end $$;
 
+-- garantia de execução (08/11)
+select t.ok('saude','saúde lista agentes e robôs com o combinado', (select count(*) from core.saude()) >= 15
+  and exists (select 1 from core.saude() where id = 'robo_multicrediario') and exists (select 1 from core.saude() where id = 'avisos_conversa'));
+insert into cx.alertas (tipo, referencia, unidade_id, dia, detalhe) values ('caixa_inconsistente', 'saude-x', 'p_a', current_date - 1, '{"caixa":1,"soma_formas":2}');
+insert into core.avisos_conversa (area, tipo, referencia, unidade_id, papel, autor_nome, texto) values ('caixa', 'caixa_inconsistente', 'saude-x', 'p_a', 'pessoa', 'Teste', 'entrou duplicado');
+select t.ok('saude','mensagem do painel é pega uma vez só (sem resposta dobrada)',
+  jsonb_array_length(public.agente_avisos_pegar(10)) = 1 and jsonb_array_length(public.agente_avisos_pegar(10)) = 0);
+update core.avisos_conversa set criado_em = now() - interval '2 hours' where referencia = 'saude-x';
+select t.ok('saude','mensagem sem resposta há mais de 30 min fica atrasada', (select atrasado from core.saude() where id = 'avisos_conversa'));
+delete from core.avisos_conversa where referencia = 'saude-x'; delete from cx.alertas where referencia = 'saude-x';
+do $$ declare ok1 boolean := false; begin
+  set local role wa_leitura;
+  ok1 := (select count(*) from cx.dias) = (select count(*) from cx.dias);  -- lê sem erro
+  reset role;
+  perform t.ok('saude','leitura do WhatsApp enxerga as linhas mesmo com RLS', (select rolbypassrls from pg_roles where rolname = 'wa_leitura') and ok1);
+end $$;
+
 update core.config set valor = 'false' where chave in ('wa.ativo', 'wa.urgencias');
 delete from wa.mensagens;
 select grupo, teste, case when ok then 'PASS' else 'FAIL' end as r, left(coalesce(detalhe,''),200) as detalhe from t.resultados order by n;

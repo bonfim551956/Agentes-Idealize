@@ -85,6 +85,8 @@ function fakeBanco(acao: Record<string, unknown>, extra: Partial<Banco> = {}) {
     envioIniciar: async () => ({ duplicado: false, id: "11111111-1111-1111-1111-111111111111", caminho: "sao_vicente/2026-11/11111111-1111-1111-1111-111111111111.pdf" }),
     envioRecebido: async () => "lendo",
     cfg: async (k, p) => (k === "wa.ativo" ? "true" : k === "fin.whatsapp.midia_hosts" ? "z-api.io" : p),
+    avisosPegar: async () => [],
+    avisoResponder: async () => 1,
     ...extra,
   };
   return { b, log };
@@ -151,4 +153,23 @@ Deno.test("cron: só com a chave do worker; envia a fila pela Z-API", async () =
   assertEquals((await r.json()).enviadas, 1);
   assertEquals(marcados, ["3:true"]);
   assertEquals(enviados, [`true|${JSON.stringify({ phone: "5513900000000", message: "Urgente" })}`]);
+});
+
+Deno.test("cron responde o \"Falar com o agente\" do painel mesmo com o WhatsApp desligado", async () => {
+  const respostas: string[] = [];
+  const { b } = fakeBanco({}, {
+    cfg: async (k, p) => (k === "wa.ativo" ? "false" : p),
+    avisosPegar: async () => [{ id: 9, tipo: "caixa_inconsistente", unidade_id: "sao_vicente", acao: "comentar", texto: "o valor entrou duplicado", aviso: { dia: "2026-09-25" }, conversa: [] }],
+    avisoResponder: async (_id, t) => { respostas.push(t); return 1; },
+  });
+  let sistemaUsado = "";
+  const fora: Fora = { fetch: (async () => new Response("{}")) as unknown as typeof fetch,
+    claude: async (c) => { sistemaUsado = String(c.system); return { stop_reason: "end_turn", content: [{ type: "text", text: "Confirmado." }] }; },
+    depois: () => {}, guardar: async () => {} };
+  const r = await atender(new Request("https://f/x", { method: "POST", headers: { "x-worker-key": "k" } }), env({ SUP_WORKER_SECRET: "k" }), b, fora);
+  const j = await r.json();
+  assertEquals(j.respostasPainel, 1);
+  assertEquals(respostas, ["Confirmado."]);
+  assertStringIncludes(sistemaUsado, "painel");
+  assertStringIncludes(sistemaUsado, "NUNCA cite nomes de tabelas");
 });
