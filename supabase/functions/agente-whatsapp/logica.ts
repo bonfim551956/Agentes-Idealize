@@ -14,7 +14,7 @@ export function iguais(a: string, b: string): boolean {
   return d === 0;
 }
 
-const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const semAcento = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 /** Loja citada na legenda/nome do arquivo: "extrato SV", "são vicente", "campinas"... */
 export function lojaDoTexto(texto: string, unidades: { id: string; nome: string }[]): string | null {
