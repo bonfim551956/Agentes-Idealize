@@ -186,7 +186,7 @@ test.describe("estados e permissões", () => {
     const secoes: [string, string][] = [
       ["/", "Seus agentes"], ["/visao-geral", "Plataforma operando"], ["/central", "Tudo para resolver"], ["/aprovacoes", "Aprovações"], ["/tarefas", "Tarefas"], ["/incidentes", "Incidentes"],
       ["/relatorio", "Relatório do dia"], ["/mercado", "Mercado e concorrentes"], ["/conteudo", "Conteúdo do dia"], ["/multicrediario", "Multicrediário × ADM"], ["/pendencias", "Pendências financeiras"], ["/financeiro", "Financeiro por loja"], ["/agentes", "Agentes"], ["/laboratorio", "Laboratório"], ["/comercial", "Comercial"], ["/marketing", "Marketing"], ["/caixa", "Caixa"], ["/cobrancas", "Cobranças"], ["/rh", "RH"], ["/retorno", "Retorno das campanhas"], ["/origem-vendas", "Origem das vendas"], ["/atendimento", "Auditoria do atendimento"], ["/supervisor", "Supervisor"], ["/enviar", "Enviar arquivos"],
-      ["/custos", "Custos de IA"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
+      ["/custos", "Custos de IA"], ["/whatsapp", "WhatsApp do agente"], ["/auditoria", "Histórico auditado"], ["/operacao", "Operação e integrações"], ["/usuarios", "Pessoas e permissões"],
     ];
     for (const [rota, titulo] of secoes) {
       await page.goto(rota);
@@ -284,6 +284,16 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("Operando agora").first()).toBeVisible();
     await expect(page.getByText(/1 tarefa\(s\) esperando você/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Abrir Caixa" })).toHaveAttribute("href", "/caixa");
+  });
+
+  test("WhatsApp do agente: liga, desliga e mostra as mensagens", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/whatsapp");
+    await expect(page.getByText("Diego Bonfim de Souza · final 7862")).toBeVisible();
+    await page.getByLabel("Agente no WhatsApp ligado").check();
+    await page.getByLabel("Avisar urgências na hora").check();
+    await page.getByRole("button", { name: "Salvar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_whatsapp_salvar")?.corpo).toMatchObject({ p_ativo: true, p_urgencias: true, p_resumos: false });
   });
 
   test("caixa: filtros de período, forma e busca por valor", async ({ page }) => {

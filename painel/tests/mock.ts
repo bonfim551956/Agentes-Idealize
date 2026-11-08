@@ -503,6 +503,15 @@ export const RPC: Record<string, unknown> = {
     { id: "auditor_atendimento", nome: "Auditor de Atendimento", status: "ativo", descricao: "Avalia as conversas das operadoras na Kommo contra o padrão de atendimento.", operando: null,
       fila: 0, esperando: 0, ultima: null, ultima_status: null, rodadas: 0, falhas: 0, novos: 0, abertos: 34, rotulo_novos: "conversas avaliadas", rotulo_abertos: "conversas esperando avaliação", tarefas: [] },
   ] },
+  painel_whatsapp: { ativo: false, urgencias: false, resumos: false, horarios_resumo: "7,12,18", papeis: "admin,diretoria",
+    autorizados: [{ nome: "Diego Bonfim de Souza", final: "7862" }],
+    mensagens: [
+      { id: 4, direcao: "saida", tipo: "texto", origem: "resposta", texto: "Não bateu. Em 25/09 o total do caixa de São Vicente foi *R$ 6.440,00* e as formas somam *R$ 6.940,00*: sobram R$ 500,00.\nHá três lançamentos de crédito de R$ 500,00 (dois de entrega e um de venda). Um deles parece duplicado: apague no ADM e o aviso fecha sozinho.", arquivo: null, status: "enviada", erro: null, em: "2026-11-07T23:58:40Z", final: "7862" },
+      { id: 3, direcao: "entrada", tipo: "texto", origem: "conversa", texto: "o caixa de SV do dia 25/09 bateu? acho que o valor da Tatiana entrou duplicado", arquivo: null, status: "respondida", erro: null, em: "2026-11-07T23:58:10Z", final: "7862" },
+      { id: 2, direcao: "saida", tipo: "texto", origem: "urgencia", texto: "⚠️ Urgente na Idealize AI\n• Caixa São Vicente 06/11: Pix de R$ 150,00 não achado no extrato\n• Cobranças São Vicente: pago no Asaas e não baixado (OS 4120)\n\nVer tudo: https://idealize-ai-painel.vercel.app/central", arquivo: null, status: "enviada", erro: null, em: "2026-11-07T23:40:00Z", final: "7862" },
+      { id: 1, direcao: "entrada", tipo: "documento", origem: "conversa", texto: "extrato São Vicente", arquivo: "sicredi_novembro.ofx", status: "respondida", erro: null, em: "2026-11-07T23:30:00Z", final: "7862" },
+    ] },
+  painel_whatsapp_salvar: { ativo: true, urgencias: true, resumos: true, horarios_resumo: "7,12,18", papeis: "admin,diretoria", autorizados: [], mensagens: [] },
   painel_aviso_conversa: { status: "aberto", pode_explicar: true, mensagens: [
     { id: 1, papel: "pessoa", autor: "Diego", texto: "O valor da Tatiana entrou duplicado no dia 25/09.", acao: "comentar", em: "2026-11-07T23:35:00Z", respondida: true },
     { id: 2, papel: "agente", autor: "Agente do caixa", texto: "Confirmado: no dia 25/09 há três lançamentos de crédito de R$ 500,00 e o total do caixa é R$ 500,00 menor que a soma das formas. Um deles é duplicado; apagando no ADM, o aviso fecha sozinho na próxima conferência.", acao: "responder", em: "2026-11-07T23:40:00Z", respondida: false },

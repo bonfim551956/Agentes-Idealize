@@ -59,6 +59,7 @@ $P -f tests/110_cx_janela.sql
 echo "→ testes da central de pendências"
 $P -f tests/111_central.sql
 $P -f tests/112_cx_multi_venda.sql
+$P -f tests/113_whatsapp.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
@@ -83,3 +84,5 @@ echo "→ leitura dos arquivos enviados (Deno)"
 (cd supabase/functions && deno test --allow-env --allow-read fin-worker/envios_test.ts 2>&1 | grep -E "passed|failed")
 echo "→ recebimento de arquivos do painel (Deno)"
 (cd supabase/functions && deno test --allow-env fin-envio/recebimento_test.ts 2>&1 | grep -E "passed|failed")
+echo "→ agente no WhatsApp (Deno)"
+(cd supabase/functions && deno test --allow-env agente-whatsapp/agente_test.ts 2>&1 | grep -E "passed|failed")

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Sessao, useSessao } from "./auth/Sessao";
 import { LojaTravada } from "./lib/loja";
 import { Inicio } from "./pages/Inicio";
+import { WhatsApp } from "./pages/WhatsApp";
 import { Shell } from "./ui/Shell";
 import { ErroPainel } from "./lib/erros";
 import { VisaoGeral } from "./pages/VisaoGeral";
@@ -79,6 +80,7 @@ function Rotas() {
         {eu.pode.auditoria && <Route path="/auditoria" element={<Auditoria />} />}
         <Route path="/operacao" element={<Operacao />} />
         {eu.pode.administrar && <Route path="/usuarios" element={<Usuarios />} />}
+        {eu.pode.administrar && <Route path="/whatsapp" element={<WhatsApp />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
