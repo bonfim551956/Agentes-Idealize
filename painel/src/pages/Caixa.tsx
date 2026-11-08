@@ -57,8 +57,10 @@ function formaDoAlerta(a: { tipo: string; detalhe: Record<string, unknown> | nul
 }
 
 type Celula = CaixaPainel["conferencia"][number];
+const conferivelForma = (forma: string, fonte: string) => ["banco", "asaas", "stone", "deposito"].includes(fonte) || forma === "crediario";
+
 function Forma({ c, fonte, rotulo, coberto }: { c: Celula; fonte: string; rotulo: string; coberto: boolean }) {
-  const conferivel = ["banco", "asaas", "stone"].includes(fonte);
+  const conferivel = conferivelForma(c.forma, fonte);
   const ok = conferivel && c.faltando === 0;
   return (
     <li className="flex items-baseline justify-between gap-3 text-sm">
@@ -66,7 +68,7 @@ function Forma({ c, fonte, rotulo, coberto }: { c: Celula; fonte: string; rotulo
       <span className="flex items-center gap-1 whitespace-nowrap">
         {dinheiro(c.sistema)}
         {!conferivel ? <span className="text-xs text-suave">(sem conferência)</span>
-          : ok ? <CheckCircle2 className="h-4 w-4 text-ok" aria-label="achado no extrato" />
+          : ok ? <CheckCircle2 className="h-4 w-4 text-ok" aria-label={c.forma === "dinheiro" ? "depósito achado no extrato" : c.forma === "crediario" ? "achado no Multicrediário" : "achado no extrato"} />
           : !coberto ? <CircleDashed className="h-4 w-4 text-suave" aria-label="aguardando extrato" />
           : <span className="text-xs font-bold text-critico">falta {dinheiro(c.faltando)}</span>}
       </span>
@@ -103,12 +105,27 @@ export function Caixa() {
         const base = todos.filter((a) => (!filtraData || noPeriodo(a.dia, per)) && (!formas.length || formas.includes(formaDoAlerta(a) ?? "-")) && casaBusca(busca, a.detalhe, a.dia ? data(a.dia) : null));
         const contaSitu = (k: string) => base.filter((a) => situacao(a) === k).length;
         const alertas = base.filter((a) => (!tipo || a.tipo === tipo) && (situ.length ? situ.includes(situacao(a)) : situacao(a) !== "resolvido"));
+        // situação do dia: tudo o que dá para conferir foi achado e não há aviso aberto → caixa conferido
+        const cobertoAte = (u: string, forma: string, dia: string) => {
+          const f = fonte[forma]?.fonte ?? "nenhuma";
+          if (forma === "crediario") return true;
+          const a = ate(u, f === "deposito" ? "banco" : f);
+          return Boolean(a && a >= dia);
+        };
+        const situacaoDia = (d: { unidade_id: string; dia: string; caixa: number | null; soma_formas: number }, todas: { forma: string; faltando: number }[]) => {
+          const conf = todas.filter((f) => conferivelForma(f.forma, fonte[f.forma]?.fonte ?? "nenhuma"));
+          const avisos = c.alertas.some((a) => a.unidade_id === d.unidade_id && a.dia === d.dia);
+          if (conf.some((f) => f.faltando > 0 && cobertoAte(d.unidade_id, f.forma, d.dia)) || avisos
+            || (d.caixa != null && Math.abs(Number(d.caixa) - Number(d.soma_formas)) > 1)) return "pendente";
+          if (conf.some((f) => f.faltando > 0)) return "aguardando";
+          return "ok";
+        };
         const linhas = c.dias.map((d) => {
           const todas = c.conferencia.filter((x) => x.unidade_id === d.unidade_id && x.dia === d.dia);
-          return { ...d, formas: formas.length ? todas.filter((x) => formas.includes(x.forma)) : todas, todas };
+          return { ...d, formas: formas.length ? todas.filter((x) => formas.includes(x.forma)) : todas, todas, situacao: situacaoDia(d, todas) };
         }).filter((l) => {
           if (formas.length && !l.formas.length) return false;
-          if (soDif && !(l.formas.some((f) => f.faltando > 0 && ["banco", "asaas", "stone"].includes(fonte[f.forma]?.fonte ?? "")) || (l.caixa != null && Math.abs(Number(l.caixa) - Number(l.soma_formas)) > 1))) return false;
+          if (soDif && !(l.formas.some((f) => f.faltando > 0 && conferivelForma(f.forma, fonte[f.forma]?.fonte ?? "")) || (l.caixa != null && Math.abs(Number(l.caixa) - Number(l.soma_formas)) > 1))) return false;
           return casaBusca(busca, l.caixa, l.todas.map((f) => [f.sistema, f.valores]), data(l.dia));
         });
         return (
@@ -118,7 +135,7 @@ export function Caixa() {
               {ligado
                 ? <>Conferindo de hora em hora (8h às 20h) e sempre que um extrato ou arquivo da Stone é enviado. Última conferência {relativo(c.sincronizacao.ultima?.em)}.</>
                 : <span className="font-bold">Agente desligado: os números abaixo são da última conferência{c.sincronizacao.ultima ? ` (${relativo(c.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
-              <p className="mt-1">Crédito e débito: pelo arquivo da Stone. Multicrediário: pelas vendas aprovadas lidas no Multicrediário (São Vicente). Brasilcard ainda sem conferência automática.</p>
+              <p className="mt-1">Pix e depósito do dinheiro: pelo extrato do banco. Crédito e débito: pelo arquivo da Stone. Multicrediário: venda a venda no Multicrediário (São Vicente). Brasilcard ainda sem conferência automática. Dia com tudo achado e sem aviso fica "✓ Conferido".</p>
             </div>
 
             <BarraFiltros ativos={ativos} aoLimpar={limpar}>
@@ -179,7 +196,10 @@ export function Caixa() {
                   <thead><tr><th className={th}>Dia</th><th className={th}>Loja</th><th className={th}>Total do caixa</th><th className={th}>Formas de pagamento</th></tr></thead>
                   <tbody>{linhas.map((l) => (
                     <tr key={`${l.unidade_id}-${l.dia}`}>
-                      <td className={tdn}>{data(l.dia)}</td>
+                      <td className={tdn}>{data(l.dia)}
+                        <p className="mt-1">{l.situacao === "ok" ? <Etiqueta tom="ok">✓ Conferido</Etiqueta>
+                          : l.situacao === "aguardando" ? <Etiqueta tom="neutro">Aguardando extrato</Etiqueta>
+                          : <Etiqueta tom="atencao">Tem pendência</Etiqueta>}</p></td>
                       <td className={td}><span className="font-bold">{rotuloUnidade(l.unidade_id, eu.unidades)}</span></td>
                       <td className={tdn}>
                         {dinheiro(l.caixa)}
@@ -189,8 +209,7 @@ export function Caixa() {
                         <ul className="flex flex-col gap-1">
                           {l.formas.sort((a, b) => b.sistema - a.sistema).map((f) => {
                             const fo = fonte[f.forma];
-                            const cob = fo && ["banco", "asaas", "stone"].includes(fo.fonte) ? ate(l.unidade_id, fo.fonte) : null;
-                            return <Forma key={f.forma} c={f} fonte={fo?.fonte ?? "nenhuma"} rotulo={fo?.rotulo ?? f.forma} coberto={Boolean(cob && cob >= l.dia)} />;
+                            return <Forma key={f.forma} c={f} fonte={fo?.fonte ?? "nenhuma"} rotulo={fo?.rotulo ?? f.forma} coberto={cobertoAte(l.unidade_id, f.forma, l.dia)} />;
                           })}
                         </ul>
                       </td>

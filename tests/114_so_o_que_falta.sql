@@ -77,6 +77,19 @@ select t.ok('extrato','sem regra vira pendência para classificar na tela', exis
   where m.chave_dedup = current_setting('t.ch') and p.tipo = 'sem_classificacao'));
 select t.ok('extrato','rodar de novo não duplica', (fin.processar_extratos('teste')->'contas') = '[]'::jsonb);
 
+-- caixa: dinheiro depositado e Multicrediário casado contam como achados
+select t.ok('caixa','Multicrediário casado venda a venda conta como achado',
+  (select bool_and(cx.pagamento_achado(pid, 'crediario', m.unidade_id, m.caixa_dia)) from cx.multi_casamentos m, unnest(m.pagamentos) pid) is not false
+  and exists (select 1 from cx.multi_casamentos));
+select t.ok('caixa','dinheiro de dia com depósito achado conta como achado',
+  (select bool_and(cx.pagamento_achado(p.id, p.forma, p.unidade_id, p.dia)) from cx.pagamentos p
+     join cx.depositos_casados d on d.unidade_id = p.unidade_id and d.dia = p.dia where p.forma = 'dinheiro') is not false
+  and exists (select 1 from cx.depositos_casados));
+select t.ok('caixa','dinheiro sem depósito continua faltando',
+  (select bool_and(not cx.pagamento_achado(p.id, p.forma, p.unidade_id, p.dia)) from cx.pagamentos p
+     where p.forma = 'dinheiro' and not exists (select 1 from cx.depositos_casados d where d.unidade_id = p.unidade_id and d.dia = p.dia)
+       and not exists (select 1 from cx.casamentos c where c.pagamento_id = p.id)) is not false);
+
 delete from com.alertas where referencia like 'sof:%';
 select grupo, teste, case when ok then 'PASS' else 'FAIL' end as r, left(coalesce(detalhe,''),200) as detalhe from t.resultados order by n;
 select count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from t.resultados;

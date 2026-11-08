@@ -275,7 +275,9 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText("Pix: 2 valores (R$ 100,00, R$ 100,00) registrados no caixa e não achados no extrato do banco.")).toBeVisible();
     await expect(page.getByText("falta R$ 200,00")).toBeVisible();
     await expect(page.getByLabel("aguardando extrato")).toBeVisible();
-    await expect(page.getByText("(sem conferência)")).toBeVisible();
+    // Multicrediário agora é conferido venda a venda; dia com pendência fica marcado
+    await expect(page.getByText("falta R$ 900,00")).toBeVisible();
+    await expect(page.getByText("Tem pendência").first()).toBeVisible();
     await expect(page.getByText("formas somam R$ 3.006,00")).toBeVisible();
     await expect(page.getByText(/18\/10\/2026 \(domingo\)/)).toBeVisible();
     await expect(page.getByText("loja fechada nesse dia")).toBeVisible();
