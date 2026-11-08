@@ -90,6 +90,17 @@ select t.ok('caixa','dinheiro sem depósito continua faltando',
      where p.forma = 'dinheiro' and not exists (select 1 from cx.depositos_casados d where d.unidade_id = p.unidade_id and d.dia = p.dia)
        and not exists (select 1 from cx.casamentos c where c.pagamento_id = p.id)) is not false);
 
+-- fechamento do caixa pelo agente
+select cx.fechar_dias(400);
+select t.ok('fechamento','dia com aviso aberto fica divergente com as divergências',
+  not exists (select 1 from cx.fechamentos f where exists (select 1 from cx.alertas a where a.unidade_id = f.unidade_id and a.dia = f.dia and a.status = 'aberto')
+    and (f.status <> 'divergente' or jsonb_array_length(f.divergencias) = 0)));
+select t.ok('fechamento','dia conferido não tem falta nem divergência e tem hora do fechamento',
+  not exists (select 1 from cx.fechamentos f where f.status = 'conferido' and (jsonb_array_length(f.faltas) > 0 or jsonb_array_length(f.divergencias) > 0 or f.conferido_em is null))
+  and exists (select 1 from cx.fechamentos where status = 'conferido'));
+select t.ok('fechamento','todo dia do caixa tem resultado', not exists (select 1 from cx.dias d where d.dia >= current_date - 400
+  and not exists (select 1 from cx.fechamentos f where f.unidade_id = d.unidade_id and f.dia = d.dia)));
+
 delete from com.alertas where referencia like 'sof:%';
 select grupo, teste, case when ok then 'PASS' else 'FAIL' end as r, left(coalesce(detalhe,''),200) as detalhe from t.resultados order by n;
 select count(*) filter (where ok) as pass, count(*) filter (where not ok) as fail from t.resultados;

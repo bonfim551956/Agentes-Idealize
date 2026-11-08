@@ -167,6 +167,10 @@ export type CaixaPainel = {
   dias: { unidade_id: string; dia: string; status_adm: string | null; caixa: number | null; soma_formas: number; deposito_valor: number | null }[];
   alertas: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null; resolvido_em?: string | null }[];
   resolvidos?: { id: number; tipo: string; referencia: string; unidade_id: string | null; dia: string | null; aberto_em: string; detalhe: Record<string, unknown> | null; resolvido_em: string; resolvido_por: string | null }[];
+  // resultado da conferência que o agente grava para cada loja e dia (fechado quando tudo bate)
+  fechamentos?: { unidade_id: string; dia: string; status: "conferido" | "divergente" | "conferindo" | "aguardando";
+    divergencias: { tipo: string; referencia?: string; detalhe: Record<string, unknown> | null }[]; faltas: { forma: string; valor: number; coberto: boolean }[];
+    conferido_em: string | null; atualizado_em: string }[];
 };
 
 export type CobrancasPainel = {

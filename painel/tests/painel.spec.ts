@@ -272,19 +272,22 @@ test.describe("estados e permissões", () => {
     await instalar(page, { logado: "aal2" });
     await page.goto("/caixa");
     await expect(page.getByText(/Agente desligado/)).toBeVisible();
-    await expect(page.getByText("Pix: 2 valores (R$ 100,00, R$ 100,00) registrados no caixa e não achados no extrato do banco.")).toBeVisible();
+    await expect(page.getByText("Pix: 2 valores (R$ 100,00, R$ 100,00) registrados no caixa e não achados no extrato do banco.", { exact: true })).toBeVisible();
     await expect(page.getByText("falta R$ 200,00")).toBeVisible();
     await expect(page.getByLabel("aguardando extrato")).toBeVisible();
     // Multicrediário agora é conferido venda a venda; dia com pendência fica marcado
     await expect(page.getByText("falta R$ 900,00")).toBeVisible();
-    await expect(page.getByText("Tem pendência").first()).toBeVisible();
+    await expect(page.getByText("Com divergência").first()).toBeVisible();
+    await expect(page.getByText(/Total R\$\s3\.100,00 × formas R\$\s3\.006,00/)).toBeVisible();
+    await expect(page.getByText("✓ Caixa conferido")).toBeVisible();
+    await expect(page.getByText(/fechado pelo agente/)).toBeVisible();
     await expect(page.getByText("formas somam R$ 3.006,00")).toBeVisible();
     await expect(page.getByText(/18\/10\/2026 \(domingo\)/)).toBeVisible();
     await expect(page.getByText("loja fechada nesse dia")).toBeVisible();
     await expect(page.getByText(/Venda 0004209916: R\$\s370,00 no Multicrediário e R\$\s350,00 no caixa/)).toBeVisible();
     await expect(page.getByText(/lançada no caixa de 22\/10\/2026 \(quinta\)\. Valor confere\./)).toBeVisible();
     await page.getByLabel("Tipo de alerta").selectOption("caixa_nao_fechado");
-    await expect(page.getByText(/não achados no extrato/)).toHaveCount(0);
+    await expect(page.getByText("Pix: 2 valores (R$ 100,00, R$ 100,00) registrados no caixa e não achados no extrato do banco.", { exact: true })).toHaveCount(0);
   });
 
   test("início mostra o que cada agente está fazendo, tarefas e pendências", async ({ page }) => {
@@ -316,7 +319,7 @@ test.describe("estados e permissões", () => {
     await page.getByLabel("Buscar").fill("");
     await page.getByRole("group", { name: "Forma" }).getByRole("button", { name: "Pix" }).click();
     await expect(page.getByText(/Venda 0004209916/)).toHaveCount(0);
-    await expect(page.getByText(/não achados no extrato/)).toBeVisible();
+    await expect(page.getByText(/não achados no extrato/).first()).toBeVisible();
     await page.getByLabel("Período", { exact: true }).selectOption("mes_passado");
     await expect.poll(() => chamadas.filter((c) => c.fn === "painel_caixa").at(-1)?.corpo).toMatchObject({ p_de: expect.stringMatching(/^\d{4}-\d{2}-01$/) });
     await page.getByRole("button", { name: /Limpar filtros/ }).click();

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, CircleDashed, Landmark } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type CaixaPainel } from "../lib/api";
-import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
+import { data, dataHora, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
 import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
@@ -125,7 +125,10 @@ export function Caixa() {
         };
         const linhas = c.dias.map((d) => {
           const todas = c.conferencia.filter((x) => x.unidade_id === d.unidade_id && x.dia === d.dia);
-          return { ...d, formas: formas.length ? todas.filter((x) => formas.includes(x.forma)) : todas, todas, situacao: situacaoDia(d, todas) };
+          // vale o fechamento gravado pelo agente; sem ele (dia ainda não conferido), a conta é feita aqui
+          const fe = (c.fechamentos ?? []).find((f) => f.unidade_id === d.unidade_id && f.dia === d.dia);
+          const situacao = fe ? ({ conferido: "ok", divergente: "pendente", conferindo: "conferindo", aguardando: "aguardando" } as const)[fe.status] : situacaoDia(d, todas);
+          return { ...d, formas: formas.length ? todas.filter((x) => formas.includes(x.forma)) : todas, todas, situacao, fe };
         }).filter((l) => {
           if (formas.length && !l.formas.length) return false;
           if (soDif && !(l.formas.some((f) => f.faltando > 0 && conferivelForma(f.forma, fonte[f.forma]?.fonte ?? "")) || (l.caixa != null && Math.abs(Number(l.caixa) - Number(l.soma_formas)) > 1))) return false;
@@ -200,10 +203,20 @@ export function Caixa() {
                   <tbody>{linhas.map((l) => (
                     <tr key={`${l.unidade_id}-${l.dia}`}>
                       <td className={tdn}>{data(l.dia)}
-                        <p className="mt-1">{l.situacao === "ok" ? <Etiqueta tom="ok">✓ Conferido</Etiqueta>
+                        <p className="mt-1">{l.situacao === "ok" ? <Etiqueta tom="ok">✓ Caixa conferido</Etiqueta>
                           : l.situacao === "aguardando" ? <Etiqueta tom="neutro">Aguardando arquivo</Etiqueta>
                           : l.situacao === "conferindo" ? <Etiqueta tom="lente">Em conferência</Etiqueta>
-                          : <Etiqueta tom="atencao">Tem pendência</Etiqueta>}</p></td>
+                          : <Etiqueta tom="critico">Com divergência</Etiqueta>}</p>
+                        {l.situacao === "ok" && l.fe?.conferido_em && <p className="mt-1 text-xs text-suave">fechado pelo agente {dataHora(l.fe.conferido_em)}</p>}
+                        {l.situacao === "pendente" && l.fe && l.fe.divergencias.length > 0 && (
+                          <ul className="mt-2 flex max-w-[260px] flex-col gap-1 text-xs font-normal text-critico">
+                            {l.fe.divergencias.map((x, i) => (
+                              <li key={i}>• {x.tipo === "total_nao_fecha" ? `Total ${dinheiro(Number(x.detalhe?.caixa))} × formas ${dinheiro(Number(x.detalhe?.soma_formas))}`
+                                : `${ALERTA[x.tipo]?.rotulo ?? x.tipo}: ${textoAlerta({ id: 0, tipo: x.tipo, referencia: x.referencia ?? "", unidade_id: l.unidade_id, dia: l.dia, aberto_em: "", detalhe: x.detalhe })}`}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {l.situacao === "aguardando" && l.fe && <p className="mt-1 text-xs text-suave">falta o arquivo de {[...new Set(l.fe.faltas.filter((f) => !f.coberto).map((f) => ({ pix: "extrato", dinheiro: "extrato (depósito)", credito: "Stone", debito: "Stone", asaas: "Asaas", crediario: "Multicrediário" } as Record<string, string>)[f.forma] ?? f.forma))].join(", ")}</p>}</td>
                       <td className={td}><span className="font-bold">{rotuloUnidade(l.unidade_id, eu.unidades)}</span></td>
                       <td className={tdn}>
                         {dinheiro(l.caixa)}
