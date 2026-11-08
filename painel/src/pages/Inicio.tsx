@@ -13,7 +13,7 @@ type AgenteInicio = {
   id: string; nome: string; status: string; descricao: string | null;
   operando: { tipo: string; operacao: string; status: string; desde: string; unidade_id: string | null }[] | null;
   fila: number; esperando: number; ultima: string | null; ultima_status: string | null; rodadas: number; falhas: number;
-  novos: number; abertos: number; rotulo_novos: string; rotulo_abertos: string; tarefas: Tarefa[]; atrasado?: boolean | null;
+  novos: number; abertos: number; resolvidos?: number; rotulo_novos: string; rotulo_abertos: string; tarefas: Tarefa[]; atrasado?: boolean | null;
 };
 type ItemCentral = { area: string; gravidade: number; titulo: string; texto: string; link: string; unidade_id: string | null };
 
@@ -65,12 +65,14 @@ function CartaoAgente({ a, pend }: { a: AgenteInicio; pend: ItemCentral[] }) {
       )}
 
       <dl className="grid grid-cols-3 gap-3">
-        <div><dt className="text-xs text-suave">Rodadas em 24 h</dt><dd className="text-2xl font-bold">{numero(a.rodadas)}</dd>
-          {a.falhas > 0 && <dd className="text-xs font-bold text-critico">{a.falhas} com falha</dd>}</div>
-        <div><dt className="text-xs text-suave">{a.rotulo_novos.replace(/^./, (c) => c.toUpperCase())}</dt>
-          <dd className={cx("text-2xl font-bold", a.novos > 0 && "text-atencao")}>{numero(a.novos)}</dd></div>
         {a.rotulo_abertos ? <div><dt className="text-xs text-suave">{a.rotulo_abertos.replace(/^./, (c) => c.toUpperCase())}</dt>
-          <dd className="text-2xl font-bold">{numero(a.abertos)}</dd></div> : <div />}
+          <dd className={cx("text-2xl font-bold", a.abertos > 0 && "text-atencao")}>{numero(a.abertos)}</dd></div>
+          : <div><dt className="text-xs text-suave">{a.rotulo_novos.replace(/^./, (c) => c.toUpperCase())}</dt><dd className="text-2xl font-bold">{numero(a.novos)}</dd></div>}
+        {a.rotulo_abertos ? <div><dt className="text-xs text-suave">{a.rotulo_novos === "novos ainda abertos" ? "Novos hoje, ainda abertos" : a.rotulo_novos.replace(/^./, (c) => c.toUpperCase())}</dt>
+          <dd className="text-2xl font-bold">{numero(a.novos)}</dd></div> : <div />}
+        {a.resolvidos != null && a.rotulo_novos === "novos ainda abertos"
+          ? <div><dt className="text-xs text-suave">Resolvidos em 24 h</dt><dd className="text-2xl font-bold text-ok">{numero(a.resolvidos)}</dd></div>
+          : <div><dt className="text-xs text-suave">Rodadas em 24 h</dt><dd className="text-2xl font-bold">{numero(a.rodadas)}</dd></div>}
       </dl>
 
       {(pend.length > 0 || a.esperando > 0 || a.fila > 0) && (
@@ -93,20 +95,30 @@ function CartaoAgente({ a, pend }: { a: AgenteInicio; pend: ItemCentral[] }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-bold">Últimas tarefas</p>
-        {!a.tarefas.length ? <p className="text-sm text-suave">Nenhuma tarefa registrada pelo painel (este agente roda fora da fila de tarefas).</p> : (
-          <ul className="flex flex-col gap-1">
-            {a.tarefas.slice(0, 3).map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-2 text-sm">
-                <Link to={`/tarefas/${t.id}`} className="min-w-0 truncate hover:underline">{FAZENDO[t.operacao] ?? t.operacao} · {nomeTipo(t.tipo)}</Link>
-                <span className="flex shrink-0 items-center gap-2"><Etiqueta tom={STATUS_TAREFA[t.status]?.tom}>{STATUS_TAREFA[t.status]?.rotulo ?? t.status}</Etiqueta>
-                  <span className="text-xs text-suave">{relativo(t.em)}</span></span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {(() => {
+        // rodadas que terminaram bem não precisam de atenção: viram uma linha só; aparecem só as que falharam ou esperam alguém
+        const problema = a.tarefas.filter((t) => !["concluida", "cancelada"].includes(t.status));
+        return (
+          <div className="flex flex-col gap-2">
+            {!a.tarefas.length ? <p className="text-sm text-suave">Roda fora da fila de tarefas (confira em "Abrir").</p>
+              : !problema.length ? <p className={cx("flex items-center gap-2 text-sm", a.falhas ? "text-atencao" : "text-ok")}><CheckCircle2 className="h-4 w-4" aria-hidden />
+                  {numero(a.rodadas)} rodada{a.rodadas === 1 ? "" : "s"} em 24 h{a.falhas ? `, ${a.falhas} com falha` : ", todas sem erro"} · última {relativo(a.tarefas[0].em)}</p> : (
+              <>
+                <p className="text-sm font-bold">Tarefas que precisam de atenção</p>
+                <ul className="flex flex-col gap-1">
+                  {problema.slice(0, 3).map((t) => (
+                    <li key={t.id} className="flex items-center justify-between gap-2 text-sm">
+                      <Link to={`/tarefas/${t.id}`} className="min-w-0 truncate hover:underline">{FAZENDO[t.operacao] ?? t.operacao} · {nomeTipo(t.tipo)}</Link>
+                      <span className="flex shrink-0 items-center gap-2"><Etiqueta tom={STATUS_TAREFA[t.status]?.tom}>{STATUS_TAREFA[t.status]?.rotulo ?? t.status}</Etiqueta>
+                        <span className="text-xs text-suave">{relativo(t.em)}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="mt-auto flex flex-wrap gap-2 border-t border-linha pt-4">
         {TELA[a.id] && <Link to={TELA[a.id]} className="flex items-center gap-1 rounded-medio bg-lente-forte px-3 py-2 text-sm font-bold sobre-lente hover:bg-lente-forte/90">Abrir {a.nome.replace(/^Agente (de |do |da )?/, "")} <ArrowRight className="h-4 w-4" aria-hidden /></Link>}

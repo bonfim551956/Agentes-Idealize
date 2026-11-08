@@ -131,6 +131,34 @@ export type Deps = {
   conversarAviso: (i: Record<string, unknown>) => Promise<unknown>;
 };
 
+/** Nível de dificuldade da mensagem: investigar erro/divergência pede o modelo mais forte. */
+export function tarefaDaPergunta(texto: string): "wa_investigar" | "wa_conversa" {
+  return /(avis|erro|errad|diferen|diverg|duplic|n[aã]o bate|n[aã]o bateu|sumiu|faltou|falta|investig|confer|por que|porque|explica)/i.test(texto)
+    ? "wa_investigar" : "wa_conversa";
+}
+
+/** Chama a IA com o primeiro modelo da lista; se ele não estiver liberado ou estiver fora do ar, tenta o próximo.
+ *  O modelo que funcionou fica valendo para o resto da conversa. */
+export function comReserva(modelos: string[], claude: Deps["claude"], usado?: (m: string) => void): Deps["claude"] {
+  const lista = modelos.filter(Boolean).length ? modelos.filter(Boolean) : ["claude-sonnet-5-5"];
+  let i = 0;
+  return async (corpo) => {
+    let ultimo: unknown = null;
+    for (; i < lista.length; i++) {
+      try {
+        const r = await claude({ ...corpo, model: lista[i] });
+        usado?.(lista[i]);
+        return r;
+      } catch (e) {
+        ultimo = e;
+        // 400/403/404 = modelo não liberado na conta; 429/500/529 = fora do ar: tenta o próximo. Outros erros: para.
+        if (!/HTTP (400|403|404|429|500|502|503|529)\b/.test(String((e as Error)?.message ?? e))) throw e;
+      }
+    }
+    throw ultimo ?? new Error("nenhum modelo de IA disponível");
+  };
+}
+
 /** Laço de conversa com ferramentas. Devolve o texto final para o WhatsApp. */
 export async function responder(modelo: string, nome: string, historico: { de: string; texto: string }[], pergunta: string, d: Deps, maxVoltas = 8, canal: Canal = "whatsapp"): Promise<string> {
   const msgs: Msg[] = [];

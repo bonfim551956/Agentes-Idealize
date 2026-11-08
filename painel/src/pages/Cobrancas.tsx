@@ -7,6 +7,7 @@ import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../li
 import { Botao, Cabecalho, Campo, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { traduzir } from "../lib/erros";
 import { useFiltroLoja } from "../lib/loja";
+import { Resolvidos } from "../ui/Resolvidos";
 import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, type Periodo } from "../ui/Filtros";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
@@ -155,7 +156,7 @@ export function Cobrancas() {
               <div><dt className="text-xs text-suave">Clientes em atraso</dt><dd className="text-2xl font-bold">{numero(tot("clientes_em_atraso"))}</dd></div>
             </dl>
 
-            <Secao titulo="O que precisa de atenção" descricao="Os avisos somem sozinhos quando a parcela é paga, baixada ou corrigida.">
+            <Secao titulo={`O que precisa de atenção (${alertas.length})`} descricao={'Só o que falta resolver. Quando a parcela é paga, baixada ou corrigida, o aviso sai daqui e vai para "Já resolvidos".'}>
               {c.sincronizacao.asaas_lojas.length > 0 && <div className="mb-4"><RegraAnterior /></div>}
               {!alertas.length && ativos ? <Vazio titulo="Nenhum aviso com esses filtros" icone={<CheckCircle2 className="h-6 w-6" />} /> : !alertas.length ? (
                 <Vazio titulo="Nada fora do lugar" icone={<CheckCircle2 className="h-6 w-6" />}>
@@ -181,6 +182,8 @@ export function Cobrancas() {
                 </ul>
               )}
             </Secao>
+            <Resolvidos area="cobrancas" unidade={unidade} periodo={per ?? periodo("30")} busca={busca} tipos={tipo ? [tipo] : []} rotulos={ALERTA}
+              descrever={(a) => texto({ ...a, referencia: a.referencia ?? "" } as unknown as CobrancasPainel["alertas"][number])} />
 
             <Secao titulo="Carteira por loja" descricao="Parcelas em aberto, pelo tempo de atraso.">
               {!c.carteira.length ? <Vazio titulo="Nenhuma parcela em aberto no seu acesso" icone={<HandCoins className="h-6 w-6" />} /> : (

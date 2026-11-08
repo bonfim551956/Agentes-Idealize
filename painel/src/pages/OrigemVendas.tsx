@@ -6,6 +6,7 @@ import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../li
 import { traduzir } from "../lib/erros";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroPeriodo, casaBusca, periodo, usePeriodo } from "../ui/Filtros";
 
 // Origem de cada venda do ADM: Loja ou Visão Ideal, e de qual loja veio o cliente (pelo funil do lead na Kommo).
 type Linha = { unidade_id: string; origem: string; vendas: number; valor: number };
@@ -62,10 +63,11 @@ export function OrigemVendas() {
   const { eu } = useSessao();
   const qc = useQueryClient();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [dias, setDias] = useState(30);
+  const [per, setPer] = usePeriodo("30");
+  const [busca, setBusca] = useState("");
   const [origem, setOrigem] = useState("");
-  const q = useQuery({ queryKey: ["origem-vendas", unidade, dias, origem],
-    queryFn: () => rpc<Dados>("painel_origem_vendas", { p_unidade: unidade || null, p_dias: dias, p_origem: origem || null }) });
+  const q = useQuery({ queryKey: ["origem-vendas", unidade, per.de, per.ate, origem],
+    queryFn: () => rpc<Dados>("painel_origem_vendas", { p_unidade: unidade || null, p_origem: origem || null, p_de: per.de, p_ate: per.ate }) });
   const d = q.data;
   const lojas = d ? [...new Set(d.resumo.map((r) => r.unidade_id))] : [];
   const cel = (u: string, o: string) => d?.resumo.find((r) => r.unidade_id === u && r.origem === o);
@@ -77,20 +79,22 @@ export function OrigemVendas() {
         descricao={d ? `Vendas do ADM de ${data(d.desde)} a ${data(d.ate)}. Cada venda é ligada pelo telefone ao último lead da Kommo até ${d.janela_dias} dias antes; o funil diz se veio da Loja ou da Visão Ideal e de qual loja.${d.ultima_leitura ? ` Leitura ${relativo(d.ultima_leitura)}.` : ""}`
           : "Cada venda do ADM: veio da Loja ou da Visão Ideal, e de qual loja."} />
 
-      <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
-        <label className="sr-only" htmlFor="ov-un">Loja</label>
-        <select id="ov-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-          <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-        </select>
-        <label className="sr-only" htmlFor="ov-dias">Período</label>
-        <select id="ov-dias" className={entradaCls} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-          {[7, 30, 60, 90].map((n) => <option key={n} value={n}>Últimos {n} dias</option>)}
-        </select>
-        <label className="sr-only" htmlFor="ov-or">Origem</label>
-        <select id="ov-or" className={entradaCls} value={origem} onChange={(e) => setOrigem(e.target.value)}>
-          <option value="">Todas as origens</option>{COLUNAS.map((k) => <option key={k} value={k}>{ORIGEM[k].rotulo}</option>)}
-        </select>
-      </div>
+      <BarraFiltros ativos={(per.atalho !== "30" ? 1 : 0) + (origem ? 1 : 0) + (busca ? 1 : 0)} aoLimpar={() => { setPer(periodo("30")); setOrigem(""); setBusca(""); }}>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr]">
+          <FiltroPeriodo id="ov-per" valor={per} aoMudar={setPer} />
+          <FiltroBusca id="ov-busca" valor={busca} aoMudar={setBusca} dica="Buscar OS, funil ou valor (na lista venda por venda)" />
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-2xl">
+          <label className="sr-only" htmlFor="ov-un">Loja</label>
+          <select id="ov-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+            <option value="">Todas as lojas</option>{eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="ov-or">Origem</label>
+          <select id="ov-or" className={entradaCls} value={origem} onChange={(e) => setOrigem(e.target.value)}>
+            <option value="">Todas as origens</option>{COLUNAS.map((k) => <option key={k} value={k}>{ORIGEM[k].rotulo}</option>)}
+          </select>
+        </div>
+      </BarraFiltros>
 
       {q.isLoading ? <Carregando linhas={6} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : !d ? null : (
         <>
@@ -130,7 +134,7 @@ export function OrigemVendas() {
               <Tabela rotulo="Vendas e origem">
                 <thead><tr><th className={th}>Dia</th><th className={th}>OS</th><th className={th}>Loja da venda</th><th className={th}>Valor</th>
                   <th className={th}>Origem</th><th className={th}>Veio da loja</th><th className={th}>Funil na Kommo</th><th className={th}>Lead → venda</th></tr></thead>
-                <tbody>{d.vendas.map((v) => (
+                <tbody>{d.vendas.filter((v) => casaBusca(busca, v.os, v.funil, v.valor)).map((v) => (
                   <tr key={v.os}>
                     <td className={tdn}>{data(v.dia)}</td><td className={tdn}>{v.os}</td>
                     <td className={tdn}>{rotuloUnidade(v.unidade_id, eu.unidades)}</td><td className={tdn}>{dinheiro(v.valor)}</td>

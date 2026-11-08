@@ -44,6 +44,24 @@ async function chamarIa(req: unknown) {
   return await r.json();
 }
 
+// Modelo por nível de dificuldade (escolhido no painel, tela "Inteligência dos agentes"), com reserva:
+// se o primeiro não estiver liberado na conta ou estiver fora do ar, usa o próximo da lista.
+async function modelosDe(tarefa: string): Promise<string[]> {
+  const [{ m }] = await db()`select core.ia_modelos(${tarefa}) as m`;
+  return (m as string[])?.length ? m : ["claude-sonnet-5-5"];
+}
+async function chamarIaComReserva(modelos: string[], montar: (modelo: string) => unknown): Promise<{ resp: any; modelo: string }> {
+  let ultimo: unknown = null;
+  for (const modelo of modelos) {
+    try { return { resp: await chamarIa(montar(modelo)), modelo }; } catch (e) {
+      ultimo = e;
+      if (!/Claude API (400|403|404|429|500|502|503|529)\b/.test(String((e as Error)?.message ?? e))) throw e;
+      log("modelo_indisponivel", { modelo, erro: String((e as Error)?.message ?? e).slice(0, 120) });
+    }
+  }
+  throw ultimo ?? new Error("nenhum modelo de IA disponível");
+}
+
 async function processar(t: { id: string; unidade_id: string }) {
   const [{ c: ctx }] = await db()`select fin.contexto_tarefa_whatsapp(${t.id}::uuid) as c`;
   const m = ctx.mensagem;
@@ -62,12 +80,13 @@ async function processar(t: { id: string; unidade_id: string }) {
     const path = `${t.unidade_id}/${ano}/${mes}/${hash}.${tipo.ext}`;
     await guardar(path, tipo.mime, bytes);
 
-    const resp = await chamarIa(montarRequisicao(ctx.config.modelo, tipo.mime, bytes, m.texto, ctx.hoje));
+    const { resp, modelo } = await chamarIaComReserva(await modelosDe("fin_comprovante"),
+      (mod) => montarRequisicao(mod, tipo.mime, bytes, m.texto, ctx.hoje));
     const { extracao, uso } = lerResposta(resp);
 
     const doc = { sha256: hash, storage_path: path, mime: tipo.mime, tamanho: bytes.length };
     const [{ r }] = await db()`select fin.concluir_extracao(${t.id}::uuid, ${EXECUTOR}, ${db().json(doc)}, ${db().json(extracao)}) as r`;
-    await db()`select core.registrar_custo('financeiro', 0, false, ${ctx.config.modelo}, ${t.id}::uuid, ${t.unidade_id},
+    await db()`select core.registrar_custo('financeiro', 0, false, ${modelo}, ${t.id}::uuid, ${t.unidade_id},
                ${uso.entrada}, ${uso.saida}, 'whatsapp_comprovante')`;
     const [{ v }] = await db()`select fin.validar_registro_whatsapp(${t.id}::uuid, ${VALIDADOR}) as v`;
     log("tarefa_ok", { tarefa: t.id, validacao: v, lancamentos: r.lancamentos?.length ?? 0 });
@@ -106,14 +125,16 @@ async function processarEnvio(t: { id: string; unidade_id: string }) {
       // PDF com mais de 3 páginas: lido em partes de 3 páginas (2 por vez) e as partes são juntadas
       const pedacos = d.formato === "pdf" ? await partesPdf(bytes, 3) : [conteudo];
       const cats = new Set((cfg.categorias as { id: string }[]).map((c) => c.id));
+      // comprovante avulso = avançado; extrato, Stone, fatura e planilha (muitas linhas e valores) = máximo
+      const modelos = await modelosDe(e.tipo_declarado === "comprovante" ? "fin_comprovante" : "fin_extrato");
       const partes: Record<string, unknown>[] = [];
       for (let i = 0; i < pedacos.length; i += 2) {
         const lote = await Promise.all(pedacos.slice(i, i + 2).map(async (pedaco, k) => {
-          const resp = await chamarIa(requisicaoEnvio(cfg.modelo, d, pedaco, { tipo_declarado: e.tipo_declarado,
+          const { resp, modelo } = await chamarIaComReserva(modelos, (mod) => requisicaoEnvio(mod, d, pedaco, { tipo_declarado: e.tipo_declarado,
             nome: pedacos.length > 1 ? `${e.nome_arquivo} (parte ${i + k + 1} de ${pedacos.length})` : e.nome_arquivo,
             hoje: String(cfg.hoje), categorias: cfg.categorias }));
           const r = lerRespostaEnvio(resp, cats);
-          await db()`select core.registrar_custo('financeiro', 0, false, ${cfg.modelo}, ${t.id}::uuid, ${t.unidade_id},
+          await db()`select core.registrar_custo('financeiro', 0, false, ${modelo}, ${t.id}::uuid, ${t.unidade_id},
                      ${r.uso.entrada}, ${r.uso.saida}, 'envio_documento')`;
           return r.leitura;
         }));

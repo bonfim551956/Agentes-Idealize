@@ -7,6 +7,24 @@ import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../li
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
+import { Resolvidos } from "../ui/Resolvidos";
+
+type AlertaMkt = MarketingPainel["alertas"][number];
+// 175 anúncios reprovados viravam 175 cartões: agora vêm juntos por campanha (abre para ver cada um)
+function agrupar(alertas: AlertaMkt[]) {
+  const out: ({ k: "um"; a: AlertaMkt } | { k: "grupo"; campanha: string; conta: string; unidade_id: string | null; itens: AlertaMkt[] })[] = [];
+  const grupos = new Map<string, Extract<(typeof out)[number], { k: "grupo" }>>();
+  for (const a of alertas) {
+    if (a.tipo !== "anuncio_reprovado") { out.push({ k: "um", a }); continue; }
+    const camp = String(a.detalhe?.campanha ?? "Campanha sem nome"), conta = String(a.detalhe?.conta ?? "");
+    const chave = `${conta}|${camp}`;
+    let g = grupos.get(chave);
+    if (!g) { g = { k: "grupo", campanha: camp, conta, unidade_id: a.unidade_id, itens: [] }; grupos.set(chave, g); out.push(g); }
+    g.itens.push(a);
+  }
+  return out;
+}
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   conta_com_problema: { rotulo: "Conta com problema na Meta", tom: "critico" },
@@ -95,11 +113,13 @@ function GastoPorDia({ dias }: { dias: MarketingPainel["por_dia"] }) {
 export function Marketing() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [dias, setDias] = useState(7);
-  const [tipo, setTipo] = useState("");
+  const [per, setPer] = usePeriodo("7");
+  const [tipos, setTipos] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
   const [recrut, setRecrut] = useState(false);
-  const q = useQuery({ queryKey: ["marketing", unidade, dias],
-    queryFn: () => rpc<MarketingPainel>("painel_marketing", { p_unidade: unidade || null, p_dias: dias }), refetchInterval: 120_000 });
+  const q = useQuery({ queryKey: ["marketing", unidade, per.de, per.ate],
+    queryFn: () => rpc<MarketingPainel>("painel_marketing", { p_unidade: unidade || null, p_de: per.de, p_ate: per.ate }), refetchInterval: 120_000 });
+  const ativos = (per.atalho !== "7" ? 1 : 0) + tipos.length + (busca ? 1 : 0);
 
   return (
     <>
@@ -108,7 +128,9 @@ export function Marketing() {
       {q.isLoading ? <Carregando linhas={5} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : (() => {
         const m = q.data!;
         const ligado = m.sincronizacao.ativa && m.sincronizacao.agente === "ativo";
-        const alertas = m.alertas.filter((a) => !tipo || a.tipo === tipo);
+        const base = m.alertas.filter((a) => (per.atalho === "7" || noPeriodo(a.aberto_em, per)) && casaBusca(busca, a.referencia, a.detalhe));
+        const alertas = base.filter((a) => !tipos.length || tipos.includes(a.tipo));
+        const blocos = agrupar(alertas);
         const gasto = m.lojas.reduce((s, l) => s + Number(l.gasto), 0);
         const conv = m.lojas.reduce((s, l) => s + Number(l.conversas), 0);
         const leads = m.lojas.reduce((s, l) => s + Number(l.leads), 0);
@@ -125,24 +147,21 @@ export function Marketing() {
               {semLoja > 0 && <p className="mt-1">{semLoja === 1 ? "1 conta de anúncio ainda não tem loja definida." : `${semLoja} contas de anúncio ainda não têm loja definida.`}</p>}
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
-              <label className="sr-only" htmlFor="m-un">Loja</label>
-              <select id="m-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-                <option value="">Todas as lojas</option>
-                {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="m-dias">Período</label>
-              <select id="m-dias" className={entradaCls} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-                <option value={1}>Hoje</option>
-                <option value={7}>Últimos 7 dias</option>
-                <option value={30}>Últimos 30 dias</option>
-              </select>
-              <label className="sr-only" htmlFor="m-tipo">Tipo de alerta</label>
-              <select id="m-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="">Todos os alertas</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
-              </select>
-            </div>
+            <BarraFiltros ativos={ativos} aoLimpar={() => { setPer(periodo("7")); setTipos([]); setBusca(""); }}>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr_1fr]">
+                <FiltroPeriodo id="m-per" valor={per} aoMudar={setPer} />
+                <FiltroBusca id="m-busca" valor={busca} aoMudar={setBusca} dica="Buscar campanha, anúncio ou conta" />
+                <div>
+                  <label className="sr-only" htmlFor="m-un">Loja</label>
+                  <select id="m-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                    <option value="">Todas as lojas</option>
+                    {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <FiltroOpcoes rotulo="Tipo" valor={tipos} aoMudar={setTipos}
+                opcoes={Object.entries(ALERTA).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: base.filter((x) => x.tipo === k).length })).filter((o) => o.n > 0 || tipos.includes(o.id))} />
+            </BarraFiltros>
 
             <dl className="mb-12 grid grid-cols-2 gap-6 sm:grid-cols-4">
               <div><dt className="text-xs text-suave">Investido em vendas</dt><dd className="text-2xl font-bold">{dinheiro(gasto)}</dd></div>
@@ -151,15 +170,37 @@ export function Marketing() {
               <div><dt className="text-xs text-suave">Vagas de emprego (fora da conta)</dt><dd className="text-2xl font-bold text-suave">{dinheiro(gRec)}</dd></div>
             </dl>
 
-            <Secao titulo="Alertas abertos" descricao="Somem sozinhos quando a situação muda na Meta.">
+            <Secao titulo={`Alertas abertos (${alertas.length})`} descricao={'Só o que falta resolver. Quando a situação muda na Meta, o aviso sai daqui e vai para "Já resolvidos". Anúncios reprovados vêm juntos por campanha.'}>
               {!alertas.length ? (
                 <Vazio titulo="Nenhum alerta aberto" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {m.sincronizacao.ultima ? "Nada fora do normal na última leitura." : "Os alertas aparecem depois da primeira leitura da Meta."}
                 </Vazio>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {alertas.map((a) => {
-                    const t = textoAlerta(a);
+                  {blocos.map((bl) => {
+                    if (bl.k === "grupo") {
+                      const rep = bl.itens.filter((x) => x.detalhe?.status === "DISAPPROVED").length;
+                      return (
+                        <li key={`g-${bl.conta}-${bl.campanha}`}>
+                          <Painel className="px-4 py-3">
+                            <details>
+                              <summary className="flex cursor-pointer list-none flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <Etiqueta tom="atencao">Anúncios reprovados ou com problema</Etiqueta>
+                                  <p className="mt-1 break-words font-bold">{bl.campanha}</p>
+                                  <p className="text-sm text-suave">{rep > 0 && `${rep} reprovado${rep > 1 ? "s" : ""}`}{rep > 0 && bl.itens.length - rep > 0 && " · "}{bl.itens.length - rep > 0 && `${bl.itens.length - rep} com problema`} · conta {bl.conta}. <span className="text-lente underline">ver os anúncios</span></p>
+                                </div>
+                                <p className="shrink-0 text-sm text-suave sm:text-right">{bl.unidade_id ? rotuloUnidade(bl.unidade_id, eu.unidades) : "Sem loja definida"}</p>
+                              </summary>
+                              <ul className="mt-3 flex flex-col gap-1 border-t border-linha pt-3 text-sm">
+                                {bl.itens.map((x) => <li key={x.id} className="break-words">{String(x.detalhe?.anuncio ?? x.referencia)} · <span className="text-suave">{x.detalhe?.status === "DISAPPROVED" ? "reprovado" : "com problema"}</span></li>)}
+                              </ul>
+                            </details>
+                          </Painel>
+                        </li>
+                      );
+                    }
+                    const a = bl.a; const t = textoAlerta(a);
                     return (
                       <li key={a.id}>
                         <Painel className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
@@ -176,6 +217,8 @@ export function Marketing() {
                 </ul>
               )}
             </Secao>
+            <Resolvidos area="marketing" unidade={unidade} periodo={per} busca={busca} tipos={tipos} rotulos={ALERTA}
+              descrever={(a) => textoAlerta({ ...a, referencia: a.referencia ?? "" } as unknown as AlertaMkt)} />
 
             <Secao titulo="Por loja" descricao={`De ${data(m.desde)} a ${data(m.ate)}. Vagas de emprego ficam fora do custo.`}>
               {!m.lojas.length ? <Vazio titulo="Nenhum gasto no seu acesso" icone={<Megaphone className="h-6 w-6" />} /> : (

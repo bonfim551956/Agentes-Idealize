@@ -1,5 +1,5 @@
 // Idealize AI — agente no WhatsApp: entrada (webhook da Z-API) e notificador (cron). Dependências injetáveis para teste.
-import { hostPermitido, iguais, lojaDoTexto, nomeArquivo, responder, type Deps, type Env } from "./logica.ts";
+import { comReserva, hostPermitido, iguais, lojaDoTexto, nomeArquivo, responder, tarefaDaPergunta, type Deps, type Env } from "./logica.ts";
 
 const MAX_BODY = 1024 * 1024;
 const MAX_ARQ = 20 * 1024 * 1024;
@@ -15,6 +15,7 @@ export type Banco = {
   envioIniciar: (entrada: number, unidade: string, nome: string, mime: string, tamanho: number, sha: string) => Promise<Record<string, unknown>>;
   envioRecebido: (id: string, tamanho: number, sha: string) => Promise<string>;
   cfg: (chave: string, padrao: string) => Promise<string>;
+  modelos: (tarefa: string) => Promise<string[]>;
   avisosPegar: (limite: number) => Promise<Record<string, unknown>[]>;
   avisoResponder: (mensagem: number, texto: string) => Promise<unknown>;
 };
@@ -67,9 +68,9 @@ export async function tratar(env: Env, b: Banco, fora: Fora, m: Record<string, u
     if (tipo === "documento" || tipo === "imagem") { await b.responder(id, await receberArquivo(b, fora, m));
       await enviarFila(env, b, fora.fetch).catch(() => null); return; }
     if (tipo !== "texto" || !String(m.texto ?? "").trim()) { await b.responder(id, "Por aqui eu entendo texto e arquivos (extrato, Stone, fatura, comprovante)."); return; }
-    const modelo = await b.cfg("wa.modelo", "claude-sonnet-5-5");
-    const texto = await responder(modelo, String(m.nome ?? ""), (m.historico as { de: string; texto: string }[]) ?? [], String(m.texto), {
-      claude: fora.claude, consultar: b.consultar, conversarAviso: (i) => b.conversarAviso(id, i) });
+    const modelos = await b.modelos(tarefaDaPergunta(String(m.texto)));
+    const texto = await responder(modelos[0], String(m.nome ?? ""), (m.historico as { de: string; texto: string }[]) ?? [], String(m.texto), {
+      claude: comReserva(modelos, fora.claude), consultar: b.consultar, conversarAviso: (i) => b.conversarAviso(id, i) });
     await b.responder(id, texto);
   } catch (e) {
     console.error(JSON.stringify({ app: "agente-whatsapp", erro: String((e as Error)?.message ?? e).slice(0, 200) }));
@@ -106,7 +107,7 @@ export async function receberArquivo(b: Banco, fora: Fora, m: Record<string, unk
 export async function responderAvisos(b: Banco, fora: Fora): Promise<number> {
   const pend = await b.avisosPegar(10);
   if (!pend.length) return 0;
-  const modelo = await b.cfg("wa.modelo", "claude-sonnet-5-5");
+  const modelos = await b.modelos("painel_aviso");
   let n = 0;
   for (const m of pend) {
     try {
@@ -114,8 +115,8 @@ export async function responderAvisos(b: Banco, fora: Fora): Promise<number> {
 Conversa até aqui: ${JSON.stringify(m.conversa)}
 ${m.acao === "explicar" ? "A pessoa marcou o aviso como explicado com a mensagem abaixo. Confirme em uma ou duas frases o que foi registrado e, se os dados mostrarem algo diferente, avise." : "Responda à última mensagem da pessoa:"}
 ${String(m.texto ?? "")}`;
-      const texto = await responder(modelo, "a diretoria", [], pergunta,
-        { claude: fora.claude, consultar: b.consultar, conversarAviso: async () => ({ erro: "não disponível no painel" }) }, 8, "painel");
+      const texto = await responder(modelos[0], "a diretoria", [], pergunta,
+        { claude: comReserva(modelos, fora.claude), consultar: b.consultar, conversarAviso: async () => ({ erro: "não disponível no painel" }) }, 8, "painel");
       await b.avisoResponder(Number(m.id), texto);
       n++;
     } catch (e) {

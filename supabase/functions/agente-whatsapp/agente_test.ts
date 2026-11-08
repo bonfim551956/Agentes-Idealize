@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "./_assert.ts";
-import { hostPermitido, lojaDoTexto, nomeArquivo, paraWhatsapp, responder, sqlDeLeitura } from "./logica.ts";
+import { comReserva, hostPermitido, lojaDoTexto, nomeArquivo, paraWhatsapp, responder, sqlDeLeitura, tarefaDaPergunta } from "./logica.ts";
 import { atender, type Banco, type Fora } from "./servico.ts";
 
 const UN = [{ id: "campinas", nome: "Campinas" }, { id: "sorocaba", nome: "Sorocaba" }, { id: "sao_vicente", nome: "São Vicente" }, { id: "piracicaba", nome: "Piracicaba" }];
@@ -85,6 +85,7 @@ function fakeBanco(acao: Record<string, unknown>, extra: Partial<Banco> = {}) {
     envioIniciar: async () => ({ duplicado: false, id: "11111111-1111-1111-1111-111111111111", caminho: "sao_vicente/2026-11/11111111-1111-1111-1111-111111111111.pdf" }),
     envioRecebido: async () => "lendo",
     cfg: async (k, p) => (k === "wa.ativo" ? "true" : k === "fin.whatsapp.midia_hosts" ? "z-api.io" : p),
+    modelos: async () => ["claude-sonnet-5-5"],
     avisosPegar: async () => [],
     avisoResponder: async () => 1,
     ...extra,
@@ -159,6 +160,7 @@ Deno.test("cron responde o \"Falar com o agente\" do painel mesmo com o WhatsApp
   const respostas: string[] = [];
   const { b } = fakeBanco({}, {
     cfg: async (k, p) => (k === "wa.ativo" ? "false" : p),
+    modelos: async () => ["claude-sonnet-5-5"],
     avisosPegar: async () => [{ id: 9, tipo: "caixa_inconsistente", unidade_id: "sao_vicente", acao: "comentar", texto: "o valor entrou duplicado", aviso: { dia: "2026-09-25" }, conversa: [] }],
     avisoResponder: async (_id, t) => { respostas.push(t); return 1; },
   });
@@ -172,4 +174,31 @@ Deno.test("cron responde o \"Falar com o agente\" do painel mesmo com o WhatsApp
   assertEquals(respostas, ["Confirmado."]);
   assertStringIncludes(sistemaUsado, "painel");
   assertStringIncludes(sistemaUsado, "NUNCA cite nomes de tabelas");
+});
+
+Deno.test("modelo: investigar erro pede o nível máximo; conversa simples fica no avançado", () => {
+  assertEquals(tarefaDaPergunta("o Pix da Tatiana entrou duplicado, confere?"), "wa_investigar");
+  assertEquals(tarefaDaPergunta("quanto vendeu São Vicente ontem?"), "wa_conversa");
+});
+
+Deno.test("modelo: se o primeiro não estiver liberado, usa o próximo e continua nele", async () => {
+  const pedidos: string[] = [];
+  const falso = async (c: Record<string, unknown>) => {
+    pedidos.push(String(c.model));
+    if (c.model === "claude-fable-5-1") throw new Error("IA respondeu HTTP 404");
+    return { content: [{ type: "text", text: "ok" }], stop_reason: "end_turn" };
+  };
+  let usado = "";
+  const ia = comReserva(["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5"], falso, (m) => { usado = m; });
+  await ia({ messages: [] });
+  await ia({ messages: [] });
+  assertEquals(pedidos, ["claude-fable-5-1", "claude-opus-5-5", "claude-opus-5-5"]);
+  assertEquals(usado, "claude-opus-5-5");
+});
+
+Deno.test("modelo: erro que não é de modelo não troca de modelo", async () => {
+  const ia = comReserva(["a", "b"], async () => { throw new Error("chave da IA não configurada"); });
+  let msg = "";
+  try { await ia({}); } catch (e) { msg = String((e as Error).message); }
+  assertEquals(msg, "chave da IA não configurada");
 });

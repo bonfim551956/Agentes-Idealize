@@ -3,10 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, MessagesSquare, Store } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
 import { rpc, type ComercialPainel } from "../lib/api";
-import { dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
+import { data, dinheiro, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { Confirmar } from "../ui/Confirmar";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
+import { Resolvidos } from "../ui/Resolvidos";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   cliente_sem_resposta: { rotulo: "Cliente esperando resposta", tom: "critico" },
@@ -68,10 +70,12 @@ function LojaDoFunil({ f, unidades }: { f: NonNullable<ComercialPainel["funis"]>
 export function Comercial() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [dias, setDias] = useState(7);
-  const [tipo, setTipo] = useState("");
-  const q = useQuery({ queryKey: ["comercial", unidade, dias],
-    queryFn: () => rpc<ComercialPainel>("painel_comercial", { p_unidade: unidade || null, p_dias: dias }), refetchInterval: 60_000 });
+  const [per, setPer] = usePeriodo("7");
+  const [tipos, setTipos] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
+  const q = useQuery({ queryKey: ["comercial", unidade, per.de, per.ate],
+    queryFn: () => rpc<ComercialPainel>("painel_comercial", { p_unidade: unidade || null, p_de: per.de, p_ate: per.ate }), refetchInterval: 60_000 });
+  const ativos = (per.atalho !== "7" ? 1 : 0) + tipos.length + (busca ? 1 : 0);
 
   return (
     <>
@@ -80,7 +84,8 @@ export function Comercial() {
       {q.isLoading ? <Carregando linhas={5} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : (() => {
         const c = q.data!;
         const ligado = c.sincronizacao.ativa && c.sincronizacao.agente === "ativo";
-        const alertas = c.alertas.filter((a) => !tipo || a.tipo === tipo);
+        const base = c.alertas.filter((a) => (per.atalho === "7" || noPeriodo(a.aberto_em, per)) && casaBusca(busca, a.referencia, a.responsavel, a.detalhe));
+        const alertas = base.filter((a) => !tipos.length || tipos.includes(a.tipo));
         const semLoja = (c.funis ?? []).filter((f) => !f.unidade_id).length;
         return (
           <>
@@ -92,26 +97,23 @@ export function Comercial() {
               {semLoja > 0 && <p className="mt-1">{semLoja === 1 ? "1 funil ainda não tem loja definida." : `${semLoja} funis ainda não têm loja definida.`}</p>}
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
-              <label className="sr-only" htmlFor="c-un">Loja</label>
-              <select id="c-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-                <option value="">Todas as lojas</option>
-                {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="c-dias">Período</label>
-              <select id="c-dias" className={entradaCls} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-                <option value={1}>Hoje e ontem</option>
-                <option value={7}>Últimos 7 dias</option>
-                <option value={30}>Últimos 30 dias</option>
-              </select>
-              <label className="sr-only" htmlFor="c-tipo">Tipo de alerta</label>
-              <select id="c-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="">Todos os alertas</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
-              </select>
-            </div>
+            <BarraFiltros ativos={ativos} aoLimpar={() => { setPer(periodo("7")); setTipos([]); setBusca(""); }}>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr_1fr]">
+                <FiltroPeriodo id="c-per" valor={per} aoMudar={setPer} />
+                <FiltroBusca id="c-busca" valor={busca} aoMudar={setBusca} dica="Buscar lead, contato ou atendente" />
+                <div>
+                  <label className="sr-only" htmlFor="c-un">Loja</label>
+                  <select id="c-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                    <option value="">Todas as lojas</option>
+                    {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <FiltroOpcoes rotulo="Tipo" valor={tipos} aoMudar={setTipos}
+                opcoes={Object.entries(ALERTA).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: base.filter((a) => a.tipo === k).length }))} />
+            </BarraFiltros>
 
-            <Secao titulo="Alertas abertos" descricao="Somem sozinhos quando a atendente responde ou o lead anda.">
+            <Secao titulo={`Alertas abertos (${alertas.length})`} descricao={`Só o que falta resolver. Quando a atendente responde ou o lead anda, o aviso sai daqui e vai para "Já resolvidos".${per.atalho !== "7" ? " Mostrando os abertos no período escolhido." : ""}`}>
               {!alertas.length ? (
                 <Vazio titulo="Nenhum alerta aberto" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {c.sincronizacao.ultima ? "Ninguém esperando resposta na última leitura." : "Os alertas aparecem depois da primeira leitura da Kommo."}
@@ -139,6 +141,11 @@ export function Comercial() {
                 </ul>
               )}
             </Secao>
+            <Resolvidos area="comercial" unidade={unidade} periodo={per} busca={busca} tipos={tipos} rotulos={ALERTA}
+              descrever={(a) => {
+                const t = textoAlerta({ ...a, referencia: a.referencia ?? "" } as unknown as ComercialPainel["alertas"][number]);
+                return a.tipo === "cliente_sem_resposta" ? { titulo: t.titulo, detalhe: "Cliente ficou esperando; a atendente respondeu." } : t;
+              }} />
 
             <Secao titulo="Tempo de resposta" descricao={`Da mensagem do cliente até a primeira resposta da atendente. Meta: até ${c.limite_resposta_min} min. O tempo médio conta só o horário de atendimento (${c.horario_atendimento.replace("-", " às ")}), para a mensagem da madrugada não inflar a conta.`}>
               <dl className="mb-4 grid grid-cols-2 gap-6 sm:max-w-2xl sm:grid-cols-4">
@@ -165,7 +172,7 @@ export function Comercial() {
               )}
             </Secao>
 
-            <Secao titulo="Conversão por loja" descricao={`Leads novos e vendas fechadas nos últimos ${c.periodo_dias} ${c.periodo_dias === 1 ? "dia" : "dias"}.`}>
+            <Secao titulo="Conversão por loja" descricao={`Leads novos e vendas fechadas de ${data(per.de)} a ${data(per.ate)}.`}>
               {!c.lojas.length ? <Vazio titulo="Nenhum lead no seu acesso" /> : (
                 <Tabela rotulo="Conversão por loja">
                   <thead><tr><th className={th}>Loja</th><th className={th}>Leads novos</th><th className={th}>Em aberto</th><th className={th}>Ganhos</th><th className={th}>Perdidos</th><th className={th}>Taxa de ganho</th><th className={th}>Valor ganho</th></tr></thead>

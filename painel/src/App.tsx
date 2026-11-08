@@ -4,6 +4,7 @@ import { Sessao, useSessao } from "./auth/Sessao";
 import { LojaTravada } from "./lib/loja";
 import { Inicio } from "./pages/Inicio";
 import { WhatsApp } from "./pages/WhatsApp";
+import { Ia } from "./pages/Ia";
 import { Shell } from "./ui/Shell";
 import { ErroPainel } from "./lib/erros";
 import { VisaoGeral } from "./pages/VisaoGeral";
@@ -77,6 +78,7 @@ function Rotas() {
         <Route path="/supervisor" element={<Supervisor />} />
         <Route path="/enviar" element={<Enviar />} />
         <Route path="/custos" element={<Custos />} />
+        {eu.pode.consultar_global && <Route path="/ia" element={<Ia />} />}
         {eu.pode.auditoria && <Route path="/auditoria" element={<Auditoria />} />}
         <Route path="/operacao" element={<Operacao />} />
         {eu.pode.administrar && <Route path="/usuarios" element={<Usuarios />} />}

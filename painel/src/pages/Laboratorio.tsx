@@ -6,6 +6,8 @@ import { rpc, type LabPainel } from "../lib/api";
 import { data, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
+import { Resolvidos } from "../ui/Resolvidos";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   prazo_vencido: { rotulo: "Prazo vencido", tom: "critico" },
@@ -32,7 +34,11 @@ function detalheAlerta(a: LabPainel["alertas"][number]): string {
 export function Laboratorio() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [tipo, setTipo] = useState("");
+  const [tipos, setTipos] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
+  const [per, setPer] = usePeriodo("30");
+  const [soUrgentes, setSoUrgentes] = useState(false);
+  const ativos = (per.atalho !== "30" ? 1 : 0) + tipos.length + (busca ? 1 : 0) + (soUrgentes ? 1 : 0);
   const q = useQuery({ queryKey: ["lab", unidade], queryFn: () => rpc<LabPainel>("painel_lab", { p_unidade: unidade || null }), refetchInterval: 60_000 });
 
   return (
@@ -42,7 +48,9 @@ export function Laboratorio() {
       {q.isLoading ? <Carregando linhas={5} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : (() => {
         const l = q.data!;
         const ativas = l.etapas.filter((e) => e.situacao !== "encerrada");
-        const alertas = l.alertas.filter((a) => !tipo || a.tipo === tipo);
+        const base = l.alertas.filter((a) => (per.atalho === "30" || noPeriodo(a.aberto_em, per)) && (!soUrgentes || a.urgente)
+          && casaBusca(busca, a.os, a.pedido, a.laboratorio, a.etapa, a.tipo_os));
+        const alertas = base.filter((a) => !tipos.length || tipos.includes(a.tipo));
         const naoConfirmadas = l.etapas.filter((e) => !e.confirmada).map((e) => e.nome);
         return (
           <>
@@ -54,18 +62,22 @@ export function Laboratorio() {
               {naoConfirmadas.length > 0 && <p className="mt-1">Ainda sem nome conferido: {naoConfirmadas.join(", ")}.</p>}
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
-              <label className="sr-only" htmlFor="l-un">Loja</label>
-              <select id="l-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-                <option value="">Todas as lojas</option>
-                {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="l-tipo">Tipo de alerta</label>
-              <select id="l-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="">Todos os alertas</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
-              </select>
-            </div>
+            <BarraFiltros ativos={ativos} aoLimpar={() => { setPer(periodo("30")); setTipos([]); setBusca(""); setSoUrgentes(false); }}>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr_1fr]">
+                <FiltroPeriodo id="l-per" valor={per} aoMudar={setPer} />
+                <FiltroBusca id="l-busca" valor={busca} aoMudar={setBusca} dica="Buscar OS, pedido, laboratório ou etapa" />
+                <div>
+                  <label className="sr-only" htmlFor="l-un">Loja</label>
+                  <select id="l-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                    <option value="">Todas as lojas</option>
+                    {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <FiltroOpcoes rotulo="Tipo" valor={tipos} aoMudar={setTipos}
+                opcoes={Object.entries(ALERTA).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: base.filter((x) => x.tipo === k).length })).filter((o) => o.n > 0 || tipos.includes(o.id))} />
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={soUrgentes} onChange={(e) => setSoUrgentes(e.target.checked)} />Só ordens urgentes</label>
+            </BarraFiltros>
 
             <Secao titulo="Em andamento por etapa">
               {!l.unidades.length ? <Vazio titulo="Nenhuma loja no seu acesso" /> : (
@@ -85,7 +97,7 @@ export function Laboratorio() {
               )}
             </Secao>
 
-            <Secao titulo="Alertas abertos" descricao="Somem sozinhos quando a ordem anda no kanban.">
+            <Secao titulo={`Alertas abertos (${alertas.length})`} descricao={`Só o que falta resolver. Quando a ordem anda no kanban, o aviso sai daqui e vai para "Já resolvidos".${per.atalho !== "30" ? " Mostrando os abertos no período escolhido." : ""}`}>
               {!alertas.length ? (
                 <Vazio titulo="Nenhum alerta aberto" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {l.sincronizacao.ultima ? "Tudo dentro do prazo na última leitura." : "Os alertas aparecem depois da primeira leitura do kanban."}
@@ -114,6 +126,8 @@ export function Laboratorio() {
                 </ul>
               )}
             </Secao>
+            <Resolvidos area="laboratorio" unidade={unidade} periodo={per} busca={busca} tipos={tipos} rotulos={ALERTA}
+              descrever={(a) => ({ titulo: `OS ${a.titulo ?? "sem número"}`, detalhe: a.tipo === "prazo_vencido" ? "Estava com o prazo vencido; a ordem andou." : a.tipo === "parado_na_etapa" ? "Estava parada na etapa; a ordem andou." : "" })} />
             <p className="flex items-center gap-2 text-xs text-suave"><FlaskConical className="h-4 w-4" aria-hidden />O painel mostra só OS, pedido e etapa: nome, telefone e receita do cliente ficam no kanban.</p>
           </>
         );

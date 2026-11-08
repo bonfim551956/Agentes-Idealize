@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiltroPeriodo, usePeriodo } from "../ui/Filtros";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
@@ -87,10 +88,10 @@ function CriterioForm({ k, aoSalvar, novo }: { k?: Criterio; aoSalvar: () => voi
 export function Atendimento() {
   const { eu } = useSessao();
   const qc = useQueryClient();
-  const [dias, setDias] = useState(30);
+  const [per, setPer] = usePeriodo("30");
   const [operadora, setOperadora] = useState("");
-  const q = useQuery({ queryKey: ["atendimento", dias, operadora], enabled: eu.pode.consultar_global,
-    queryFn: () => rpc<Dados>("painel_auditoria_atendimento", { p_dias: dias, p_operadora: operadora ? Number(operadora) : null }) });
+  const q = useQuery({ queryKey: ["atendimento", per.de, per.ate, operadora], enabled: eu.pode.consultar_global,
+    queryFn: () => rpc<Dados>("painel_auditoria_atendimento", { p_operadora: operadora ? Number(operadora) : null, p_de: per.de, p_ate: per.ate }) });
   if (!eu.pode.consultar_global) return <Vazio titulo="Auditoria do atendimento">Esta tela fica com a diretoria.</Vazio>;
   const d = q.data;
   const ativos = d?.criterios.filter((k) => k.ativo) ?? [];
@@ -98,15 +99,10 @@ export function Atendimento() {
   return (
     <>
       <Cabecalho titulo="Auditoria do atendimento"
-        descricao={d ? `Desde ${data(d.desde)}: ${numero(d.lidas)} conversas lidas na Kommo, ${numero(d.avaliadas)} avaliadas.${d.ultima_leitura ? ` Última leitura ${relativo(d.ultima_leitura)}.` : ""}`
+        descricao={d ? `De ${data(per.de)} a ${data(per.ate)}: ${numero(d.lidas)} conversas lidas na Kommo, ${numero(d.avaliadas)} avaliadas.${d.ultima_leitura ? ` Última leitura ${relativo(d.ultima_leitura)}.` : ""}`
           : "Quem segue o padrão de atendimento e o quanto ele funciona."}
         acoes={d ? (
-          <div className="flex gap-2">
-            <label className="sr-only" htmlFor="at-dias">Período</label>
-            <select id="at-dias" className={entradaCls + " w-auto"} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-              {[7, 30, 60, 90].map((n) => <option key={n} value={n}>Últimos {n} dias</option>)}
-            </select>
-          </div>
+          <FiltroPeriodo id="aud-per" valor={per} aoMudar={setPer} />
         ) : undefined} />
 
       {q.isLoading ? <Carregando linhas={6} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : !d ? null : (

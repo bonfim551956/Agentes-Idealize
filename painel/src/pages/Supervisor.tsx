@@ -1,3 +1,5 @@
+import { Resolvidos } from "../ui/Resolvidos";
+import { periodo } from "../ui/Filtros";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, MessageSquareText } from "lucide-react";
 import { rpc, type SupervisorPainel } from "../lib/api";
@@ -46,7 +48,7 @@ export function Supervisor() {
               </p>
             </div>
 
-            <Secao titulo="Problemas abertos" descricao="Somem sozinhos quando o problema se resolve.">
+            <Secao titulo={`Problemas abertos (${r.achados.length})`} descricao={'Só o que falta resolver. Quando o problema se resolve, ele sai daqui e vai para "Já resolvidos".'}>
               {!r.achados.length ? (
                 <Vazio titulo="Nada fora do lugar" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {r.ultima ? "Tudo certo na última verificação." : "Os problemas aparecem depois da primeira verificação."}
@@ -97,7 +99,9 @@ export function Supervisor() {
                 <pre className="whitespace-pre-wrap break-words font-sans text-sm">{r.previa}</pre>
               </Painel>
               {!r.mensagens.length ? <Vazio titulo="Nenhum aviso ainda" icone={<MessageSquareText className="h-6 w-6" />} /> : (
-                <ul className="flex flex-col gap-2">
+                <details className="rounded-grande border border-linha bg-superficie px-4 py-3">
+                <summary className="cursor-pointer font-bold">Histórico dos avisos ({r.mensagens.length}) <span className="font-normal text-suave">· ficam guardados aqui, fechados</span></summary>
+                <ul className="mt-3 flex flex-col gap-2">
                   {r.mensagens.map((m) => (
                     <li key={m.id}>
                       <Painel className="px-4 py-3">
@@ -112,20 +116,12 @@ export function Supervisor() {
                     </li>
                   ))}
                 </ul>
+                </details>
               )}
             </Secao>
 
-            {r.resolvidos.length > 0 && (
-              <Secao titulo="Resolvidos recentemente">
-                <Tabela rotulo="Problemas resolvidos recentemente">
-                  <thead><tr><th className={th}>Problema</th><th className={th}>Gravidade</th><th className={th}>Aberto</th><th className={th}>Resolvido</th></tr></thead>
-                  <tbody>{r.resolvidos.map((a) => (
-                    <tr key={a.id}><td className={td}>{a.titulo}</td><td className={td}><Etiqueta tom={SEV[a.severidade]?.tom}>{SEV[a.severidade]?.rotulo ?? a.severidade}</Etiqueta></td>
-                      <td className={tdn}>{dataHora(a.aberto_em)}</td><td className={tdn}>{dataHora(a.resolvido_em)}</td></tr>
-                  ))}</tbody>
-                </Tabela>
-              </Secao>
-            )}
+            <Resolvidos area="supervisor" periodo={periodo("7")} rotulos={{}}
+              descrever={(a) => ({ titulo: a.titulo ?? "", detalhe: "" })} />
           </>
         );
       })()}

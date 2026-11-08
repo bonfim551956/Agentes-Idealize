@@ -13,6 +13,7 @@ const banco: Banco = {
   fila: async (n) => (await db()`select wa.fila(${n}) r`)[0].r,
   prepararAvisos: async () => (await db()`select wa.preparar_avisos() r`)[0].r,
   cfg: async (k, padrao) => (await db()`select core.cfg(${k}, ${padrao}) r`)[0].r,
+  modelos: async (t) => (await db()`select core.ia_modelos(${t}) r`)[0].r as string[],
   conversarAviso: async (e, i) => (await db()`select wa.aviso_conversar(${e}, ${String(i.tipo ?? "")}, ${String(i.referencia ?? "")},
     ${String(i.mensagem_pessoa ?? "")}, ${String(i.resposta ?? "")}, ${i.explicar === true}) r`)[0].r,
   envioIniciar: async (e, u, nome, mime, tam, sha) => (await db()`select wa.envio_iniciar(${e}, ${u}, ${nome}, ${mime}, ${tam}, ${sha}) r`)[0].r,

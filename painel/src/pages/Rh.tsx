@@ -6,6 +6,8 @@ import { rpc, type RhPainel } from "../lib/api";
 import { data, numero, relativo, rotuloUnidade, type Tom } from "../lib/format";
 import { Botao, Cabecalho, Carregando, ErroCaixa, Etiqueta, Painel, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { BarraFiltros, FiltroBusca, FiltroOpcoes, FiltroPeriodo, casaBusca, noPeriodo, periodo, usePeriodo } from "../ui/Filtros";
+import { Resolvidos } from "../ui/Resolvidos";
 
 const ALERTA: Record<string, { rotulo: string; tom: Tom }> = {
   ferias_vencidas: { rotulo: "Férias fora do prazo", tom: "critico" },
@@ -49,7 +51,10 @@ function texto(a: RhPainel["alertas"][number]): { titulo: string; detalhe: strin
 export function Rh() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [tipo, setTipo] = useState("");
+  const [tipos, setTipos] = useState<string[]>([]);
+  const [busca, setBusca] = useState("");
+  const [per, setPer] = usePeriodo("30");
+  const ativos = (per.atalho !== "30" ? 1 : 0) + tipos.length + (busca ? 1 : 0);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const q = useQuery({ queryKey: ["rh", unidade, mes],
     queryFn: () => rpc<RhPainel>("painel_rh", { p_unidade: unidade || null, p_mes: `${mes}-01` }), refetchInterval: 600_000 });
@@ -61,7 +66,9 @@ export function Rh() {
       {q.isLoading ? <Carregando linhas={5} /> : q.error ? <ErroCaixa erro={q.error} tentarDeNovo={() => q.refetch()} /> : (() => {
         const r = q.data!;
         const ligado = r.sincronizacao.ativa && r.sincronizacao.agente === "ativo";
-        const alertas = r.alertas.filter((a) => !tipo || a.tipo === tipo);
+        // com datas escolhidas: vale o prazo do aviso (ou o dia em que abriu, quando não há prazo)
+        const base = r.alertas.filter((a) => (per.atalho === "30" || noPeriodo(a.prazo ?? a.aberto_em, per)) && casaBusca(busca, a.detalhe, a.referencia));
+        const alertas = base.filter((a) => !tipos.length || tipos.includes(a.tipo));
         const c = r.contabilidade;
         const vazio = !c.admissoes.length && !c.desligamentos.length && !c.ferias.length && !c.mudancas.length;
         return (
@@ -74,22 +81,24 @@ export function Rh() {
               <p className="mt-1">Prazos pela regra geral da CLT; convenção coletiva e casos especiais, confirme com a contabilidade.</p>
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:max-w-3xl">
-              <label className="sr-only" htmlFor="rh-un">Loja</label>
-              <select id="rh-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
-                <option value="">Todas as lojas</option>
-                {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="rh-tipo">Tipo de aviso</label>
-              <select id="rh-tipo" className={entradaCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                <option value="">Todos os avisos</option>
-                {Object.entries(ALERTA).map(([k, v]) => <option key={k} value={k}>{v.rotulo}</option>)}
-              </select>
-              <label className="sr-only" htmlFor="rh-mes">Mês da lista para a contabilidade</label>
-              <input id="rh-mes" type="month" className={entradaCls} value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
-            </div>
+            <BarraFiltros ativos={ativos} aoLimpar={() => { setPer(periodo("30")); setTipos([]); setBusca(""); }}>
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-[auto_1fr_1fr]">
+                <FiltroPeriodo id="rh-per" valor={per} aoMudar={setPer} />
+                <FiltroBusca id="rh-busca" valor={busca} aoMudar={setBusca} dica="Buscar pessoa, cargo ou peça" />
+                <div>
+                  <label className="sr-only" htmlFor="rh-un">Loja</label>
+                  <select id="rh-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
+                    <option value="">Todas as lojas</option>
+                    {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <FiltroOpcoes rotulo="Tipo" valor={tipos} aoMudar={setTipos}
+                opcoes={Object.entries(ALERTA).map(([k, v]) => ({ id: k, rotulo: v.rotulo, n: base.filter((x) => x.tipo === k).length })).filter((o) => o.n > 0 || tipos.includes(o.id))} />
+              <p className="text-xs text-suave">Com datas escolhidas, vale o prazo de cada aviso (ex.: fins de experiência de dezembro).</p>
+            </BarraFiltros>
 
-            <Secao titulo="Prazos e avisos" descricao="Somem sozinhos quando o RH 360 é atualizado.">
+            <Secao titulo={`Prazos e avisos (${alertas.length})`} descricao={'Só o que falta resolver. Quando o RH 360 é atualizado, o aviso sai daqui e vai para "Já resolvidos".'}>
               {!alertas.length ? (
                 <Vazio titulo="Nenhum prazo apertado" icone={<CheckCircle2 className="h-6 w-6" />}>
                   {r.sincronizacao.ultima ? "Tudo em dia na última leitura." : "Os avisos aparecem depois da primeira leitura do RH 360."}
@@ -117,6 +126,8 @@ export function Rh() {
                 </ul>
               )}
             </Secao>
+            <Resolvidos area="rh" unidade={unidade} periodo={per} busca={busca} tipos={tipos} rotulos={ALERTA}
+              descrever={(a) => ({ titulo: texto({ ...a, referencia: a.referencia ?? "", prazo: a.dia } as unknown as RhPainel["alertas"][number]).titulo, detalhe: "" })} />
 
             <Secao titulo="Quadro por loja">
               {!r.quadro.length ? <Vazio titulo="Ninguém no seu acesso" icone={<UsersRound className="h-6 w-6" />} /> : (
@@ -136,7 +147,10 @@ export function Rh() {
             </Secao>
 
             <Secao titulo="Lista do mês para a contabilidade" descricao="Confira antes de mandar ao escritório. Sem valores: salário e rescisão ficam com a contabilidade."
-              acoes={<Botao tamanho="sm" icone={<Printer className="h-4 w-4" aria-hidden />} onClick={() => window.print()}>Imprimir</Botao>}>
+              acoes={<div className="flex items-center gap-2">
+                <label className="sr-only" htmlFor="rh-mes">Mês da lista para a contabilidade</label>
+                <input id="rh-mes" type="month" className={entradaCls + " w-44"} value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
+                <Botao tamanho="sm" icone={<Printer className="h-4 w-4" aria-hidden />} onClick={() => window.print()}>Imprimir</Botao></div>}>
               {vazio ? <Vazio titulo="Nada registrado neste mês" /> : (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {[

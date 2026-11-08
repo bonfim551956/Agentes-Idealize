@@ -203,7 +203,7 @@ test.describe("estados e permissões", () => {
     await expect(page.getByText(/Agente desligado: os números abaixo são da última leitura/)).toBeVisible();
     await expect(page.getByText("OS 1001, pedido BR-55821")).toBeVisible();
     await expect(page.getByText("Cliente avisado há 21 dias, com saldo a receber.")).toBeVisible();
-    await page.getByLabel("Tipo de alerta").selectOption("prazo_vencido");
+    await page.getByRole("group", { name: "Tipo" }).getByRole("button", { name: /Prazo vencido/ }).click();
     await expect(page.getByText("OS 2002, pedido BR-55102")).toHaveCount(0);
     await expect(page.getByText("OS 1001, pedido BR-55821")).toBeVisible();
   });
@@ -217,8 +217,16 @@ test.describe("estados e permissões", () => {
     const bia = page.getByRole("row", { name: /Atendente Bia/ });
     await expect(bia.getByRole("cell", { name: "58 min" })).toBeVisible();
     await expect(page.getByText(/conta só o horário de atendimento \(09:00 às 19:00\)/)).toBeVisible();
-    await page.getByLabel("Tipo de alerta").selectOption("lead_parado");
+    await page.getByRole("group", { name: "Tipo" }).getByRole("button", { name: /Lead parado/ }).click();
     await expect(page.getByText(/Última mensagem do cliente/)).toHaveCount(0);
+    // o que já foi resolvido fica escondido numa gaveta
+    await expect(page.getByText("Cliente ficou esperando; a atendente respondeu.")).toHaveCount(0);
+    await page.getByRole("group", { name: "Tipo" }).getByRole("button", { name: /Lead parado/ }).click();
+    await page.getByRole("button", { name: /Já resolvidos no período \(3\)/ }).click();
+    await expect(page.getByText("Cliente ficou esperando; a atendente respondeu.")).toBeVisible();
+    await expect(page.getByText(/resolvido por Diego Bonfim de Souza/)).toBeVisible();
+    await page.getByLabel("Período", { exact: true }).selectOption("mes_passado");
+    await expect.poll(() => chamadas.filter((c) => c.fn === "painel_comercial").at(-1)?.corpo.p_de).toMatch(/^\d{4}-\d{2}-01$/);
     await page.getByLabel("Loja do funil Funil Sorocaba").selectOption("campinas");
     await page.getByRole("row", { name: /Funil Sorocaba/ }).getByRole("button", { name: "Salvar" }).click();
     const dlg = page.getByRole("dialog");
@@ -307,7 +315,7 @@ test.describe("estados e permissões", () => {
     await page.getByRole("group", { name: "Forma" }).getByRole("button", { name: "Pix" }).click();
     await expect(page.getByText(/Venda 0004209916/)).toHaveCount(0);
     await expect(page.getByText(/não achados no extrato/)).toBeVisible();
-    await page.getByLabel("Período").selectOption("mes_passado");
+    await page.getByLabel("Período", { exact: true }).selectOption("mes_passado");
     await expect.poll(() => chamadas.filter((c) => c.fn === "painel_caixa").at(-1)?.corpo).toMatchObject({ p_de: expect.stringMatching(/^\d{4}-\d{2}-01$/) });
     await page.getByRole("button", { name: /Limpar filtros/ }).click();
     await expect(page.getByText(/Venda 0004209916/)).toBeVisible();
@@ -384,7 +392,8 @@ test.describe("estados e permissões", () => {
     await expect(lab.getByText("Atrasado")).toBeVisible();
     await expect(lab.getByRole("cell", { name: "9 de 10 batem · 1 diferente(s)" })).toBeVisible();
     await expect(page.getByRole("row", { name: /Agente de RH/ }).getByText("Desligado")).toBeVisible();
-    await expect(page.getByText("Não enviado (modo sombra)")).toBeVisible();
+    await page.getByText(/Histórico dos avisos/).click();
+    await expect(page.getByText("Não enviado (modo sombra)").first()).toBeVisible();
     await expect(page.getByText(/Prévia do próximo resumo/)).toBeVisible();
   });
 

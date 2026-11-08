@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, Bot, CircleDollarSign, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
+  Activity, Bot, CircleDollarSign, BrainCircuit, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
   ServerCog, ShieldAlert, Sun, Home, MessageCircle, Lock, LockOpen, Store, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
@@ -66,6 +66,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       { para: "/origem-vendas", rotulo: "Origem das vendas", icone: <Rota className={ic} /> },
       { para: "/rh", rotulo: "RH", icone: <UsersRound className={ic} /> },
       { para: "/custos", rotulo: "Custos de IA", icone: <CircleDollarSign className={ic} /> },
+      ...(eu.pode.consultar_global ? [{ para: "/ia", rotulo: "Inteligência dos agentes", icone: <BrainCircuit className={ic} /> }] : []),
     ] },
     { titulo: "Controle", itens: [
       ...(eu.pode.consultar_global ? [{ para: "/supervisor", rotulo: "Supervisor", icone: <ShieldCheck className={ic} /> }] : []),

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Info, TrendingUp } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
@@ -6,6 +5,7 @@ import { rpc, type AtribuicaoPainel } from "../lib/api";
 import { data, dinheiro, numero, relativo, rotuloUnidade } from "../lib/format";
 import { Cabecalho, Carregando, ErroCaixa, Secao, Tabela, Vazio, cx, entradaCls, td, tdn, th } from "../ui/base";
 import { useFiltroLoja } from "../lib/loja";
+import { FiltroPeriodo, usePeriodo } from "../ui/Filtros";
 
 const div = (a: number, b: number) => (b > 0 ? a / b : null);
 const pct = (v: number | null) => (v == null ? "sem dados" : `${numero(Math.round(v * 1000) / 10)}%`);
@@ -14,9 +14,9 @@ const vezes = (v: number | null) => (v == null ? "sem dados" : `${numero(Math.ro
 export function Atribuicao() {
   const { eu } = useSessao();
   const [unidade, setUnidade, travada] = useFiltroLoja();
-  const [dias, setDias] = useState(30);
-  const q = useQuery({ queryKey: ["atribuicao", unidade, dias],
-    queryFn: () => rpc<AtribuicaoPainel>("painel_atribuicao", { p_unidade: unidade || null, p_dias: dias }), refetchInterval: 600_000 });
+  const [per, setPer] = usePeriodo("30");
+  const q = useQuery({ queryKey: ["atribuicao", unidade, per.de, per.ate],
+    queryFn: () => rpc<AtribuicaoPainel>("painel_atribuicao", { p_unidade: unidade || null, p_de: per.de, p_ate: per.ate }), refetchInterval: 600_000 });
 
   return (
     <>
@@ -36,18 +36,13 @@ export function Atribuicao() {
                 : <span className="font-bold">Agente desligado: os números abaixo são da última leitura{a.sincronizacao.ultima ? ` (${relativo(a.sincronizacao.ultima.em)})` : ", e ainda não houve nenhuma"}.</span>}
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:max-w-xl">
+            <div className="mb-6 flex flex-col gap-2 rounded-grande border border-linha bg-superficie p-4 lg:flex-row lg:items-center">
               <label className="sr-only" htmlFor="at-un">Loja</label>
               <select id="at-un" className={entradaCls} value={unidade} disabled={travada} title={travada ? "Loja travada no topo da página" : undefined} onChange={(e) => setUnidade(e.target.value)}>
                 <option value="">Todas as lojas</option>
                 {eu.unidades.map((u) => <option key={u.id} value={u.id}>{u.nome}</option>)}
               </select>
-              <label className="sr-only" htmlFor="at-dias">Período</label>
-              <select id="at-dias" className={entradaCls} value={dias} onChange={(e) => setDias(Number(e.target.value))}>
-                <option value={30}>Leads dos últimos 30 dias</option>
-                <option value={60}>Leads dos últimos 60 dias</option>
-                <option value={90}>Leads dos últimos 90 dias</option>
-              </select>
+              <FiltroPeriodo id="at-per" valor={per} aoMudar={setPer} />
             </div>
 
             <dl className="mb-12 grid grid-cols-2 gap-6 sm:grid-cols-4">
