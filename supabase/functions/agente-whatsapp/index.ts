@@ -39,7 +39,9 @@ async function claude(corpo: Record<string, unknown>) {
     body: JSON.stringify(corpo),
   });
   if (!r.ok) throw new Error(`IA respondeu HTTP ${r.status}`);
-  return await r.json();
+  const j = await r.json();
+  console.log(JSON.stringify({ app: "agente-whatsapp", evento: "ia", modelo: corpo.model }));
+  return j;
 }
 
 async function guardar(caminho: string, bytes: Uint8Array) {
