@@ -117,9 +117,10 @@ export function Caixa() {
         const situacaoDia = (d: { unidade_id: string; dia: string; caixa: number | null; soma_formas: number }, todas: { forma: string; faltando: number }[]) => {
           const conf = todas.filter((f) => conferivelForma(f.forma, fonte[f.forma]?.fonte ?? "nenhuma"));
           const avisos = c.alertas.some((a) => a.unidade_id === d.unidade_id && a.dia === d.dia);
-          if (conf.some((f) => f.faltando > 0 && cobertoAte(d.unidade_id, f.forma, d.dia)) || avisos
-            || (d.caixa != null && Math.abs(Number(d.caixa) - Number(d.soma_formas)) > 1)) return "pendente";
-          if (conf.some((f) => f.faltando > 0)) return "aguardando";
+          // pendência de verdade = aviso aberto do agente ou total que não fecha; o resto ainda está dentro do prazo de conferência
+          if (avisos || (d.caixa != null && Math.abs(Number(d.caixa) - Number(d.soma_formas)) > 1)) return "pendente";
+          if (conf.some((f) => f.faltando > 0 && !cobertoAte(d.unidade_id, f.forma, d.dia))) return "aguardando";
+          if (conf.some((f) => f.faltando > 0)) return "conferindo";
           return "ok";
         };
         const linhas = c.dias.map((d) => {
@@ -200,7 +201,8 @@ export function Caixa() {
                     <tr key={`${l.unidade_id}-${l.dia}`}>
                       <td className={tdn}>{data(l.dia)}
                         <p className="mt-1">{l.situacao === "ok" ? <Etiqueta tom="ok">✓ Conferido</Etiqueta>
-                          : l.situacao === "aguardando" ? <Etiqueta tom="neutro">Aguardando extrato</Etiqueta>
+                          : l.situacao === "aguardando" ? <Etiqueta tom="neutro">Aguardando arquivo</Etiqueta>
+                          : l.situacao === "conferindo" ? <Etiqueta tom="lente">Em conferência</Etiqueta>
                           : <Etiqueta tom="atencao">Tem pendência</Etiqueta>}</p></td>
                       <td className={td}><span className="font-bold">{rotuloUnidade(l.unidade_id, eu.unidades)}</span></td>
                       <td className={tdn}>
