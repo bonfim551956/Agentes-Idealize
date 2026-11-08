@@ -593,3 +593,28 @@ test.describe("conteúdo: ideias, avaliador e roteirista", () => {
       .toMatchObject({ roteiros_por_dia: 5, formatos: ["reel", "carrossel"] });
   });
 });
+
+test.describe("lojas", () => {
+  test("ativa, desativa e cadastra loja nova com os códigos dos sistemas", async ({ page }) => {
+    const chamadas = await instalar(page, { logado: "aal2" });
+    await page.goto("/lojas");
+    await expect(page.getByRole("row", { name: /Campinas/ }).getByText("Desativada")).toBeVisible();
+    await page.getByRole("row", { name: /Campinas/ }).getByRole("button", { name: "Ativar" }).click();
+    let dlg = page.getByRole("dialog");
+    await dlg.getByLabel("Motivo").fill("voltar a acompanhar Campinas");
+    await dlg.getByRole("button", { name: "Ativar" }).click();
+    await expect.poll(() => chamadas.find((c) => c.fn === "painel_loja_salvar")?.corpo).toMatchObject({ p_id: "campinas", p_ativa: true });
+    await page.getByRole("button", { name: "Nova loja" }).click();
+    await page.getByLabel("Nome da loja", { exact: true }).fill("Santos Centro");
+    await page.getByLabel("Nome da loja no ADM e no Lab").fill("santos centro");
+    await page.getByLabel("Nome da loja no RH 360").fill("santos");
+    await expect(page.getByText("Código no painel: santos_centro")).toBeVisible();
+    await page.getByRole("button", { name: "Criar loja" }).click();
+    dlg = page.getByRole("dialog");
+    await dlg.getByLabel("Motivo").fill("loja nova em Santos");
+    await dlg.getByRole("button", { name: "Criar loja" }).click();
+    await expect.poll(() => chamadas.filter((c) => c.fn === "painel_loja_salvar").at(-1)?.corpo).toEqual(
+      { p_id: "santos_centro", p_nome: "Santos Centro", p_ativa: true, p_codigo_adm: "santoscentro", p_codigo_rh: "SANTOS", p_motivo: "loja nova em Santos" });
+  });
+});
+

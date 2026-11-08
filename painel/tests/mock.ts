@@ -540,6 +540,14 @@ export const RPC: Record<string, unknown> = {
       { id: "fin_extrato", nome: "Financeiro: extratos e faturas", ajuda: "Leitura de extrato do banco, Stone, Asaas e fatura de cartão inteiros.", nivel: "maximo", usado: "claude-sonnet-5-5" },
     ] },
   painel_ia_salvar: {},
+  painel_lojas: [
+    { id: "sao_vicente", nome: "São Vicente", ativa: true, criada_em: "2026-10-26T17:05:00Z", codigo_adm: "saovicente", codigo_rh: "SAOVICENTE", funis: 3, contas_anuncio: 2, contas_banco: 1, pessoas: 4 },
+    { id: "administrativo", nome: "Administrativo / Grupo", ativa: true, criada_em: "2026-10-26T17:05:00Z", codigo_adm: null, codigo_rh: null, funis: 0, contas_anuncio: 1, contas_banco: 0, pessoas: 2 },
+    { id: "campinas", nome: "Campinas", ativa: false, criada_em: "2026-10-26T17:05:00Z", codigo_adm: "campinas", codigo_rh: "CAMPINAS", funis: 2, contas_anuncio: 1, contas_banco: 0, pessoas: 3 },
+    { id: "piracicaba", nome: "Piracicaba", ativa: false, criada_em: "2026-10-26T17:05:00Z", codigo_adm: "piracicaba", codigo_rh: "PIRACICABA", funis: 1, contas_anuncio: 1, contas_banco: 0, pessoas: 2 },
+    { id: "sorocaba", nome: "Sorocaba", ativa: false, criada_em: "2026-10-26T17:05:00Z", codigo_adm: "sorocaba", codigo_rh: "SOROCABA", funis: 2, contas_anuncio: 1, contas_banco: 0, pessoas: 3 },
+  ],
+  painel_loja_salvar: [],
   painel_whatsapp_salvar: { ativo: true, urgencias: true, resumos: true, horarios_resumo: "7,12,18", papeis: "admin,diretoria", autorizados: [], mensagens: [] },
   painel_aviso_conversa: { status: "aberto", pode_explicar: true, mensagens: [
     { id: 1, papel: "pessoa", autor: "Diego", texto: "O valor da Tatiana entrou duplicado no dia 25/09.", acao: "comentar", em: "2026-11-07T23:35:00Z", respondida: true },

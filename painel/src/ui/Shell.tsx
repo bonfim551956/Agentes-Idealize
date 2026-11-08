@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, Bot, CircleDollarSign, BrainCircuit, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
+  Activity, Bot, CircleDollarSign, BrainCircuit, Building2, ClipboardCheck, FileSearch, Gauge, ListChecks, LogOut, Menu, Moon,
   ServerCog, ShieldAlert, Sun, Home, MessageCircle, Lock, LockOpen, Store, Users, Wallet, X, AlertOctagon, FlaskConical, MessagesSquare, Megaphone, Landmark, HandCoins, UsersRound, TrendingUp, ShieldCheck, FileUp, Newspaper, Radar, Clapperboard, CreditCard, Route as Rota, Headset, Inbox,
 } from "lucide-react";
 import { useSessao } from "../auth/Sessao";
@@ -74,6 +74,7 @@ function Navegacao({ aoNavegar }: { aoNavegar?: () => void }) {
       ...(eu.pode.administrar ? [{ para: "/whatsapp", rotulo: "WhatsApp do agente", icone: <MessageCircle className={ic} /> }] : []),
       { para: "/operacao", rotulo: "Operação e integrações", icone: <ServerCog className={ic} /> },
       ...(eu.pode.administrar ? [{ para: "/usuarios", rotulo: "Pessoas e permissões", icone: <Users className={ic} /> }] : []),
+      ...(eu.pode.administrar ? [{ para: "/lojas", rotulo: "Lojas", icone: <Building2 className={ic} /> }] : []),
     ] },
   ];
   return (

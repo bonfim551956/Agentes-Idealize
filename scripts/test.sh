@@ -62,6 +62,8 @@ $P -f tests/112_cx_multi_venda.sql
 $P -f tests/113_whatsapp.sql
 echo "→ testes de só o que falta (resolvidos, período, modelos)"
 $P -f tests/114_so_o_que_falta.sql
+echo "→ testes das lojas (ativar, desativar, cadastrar)"
+$P -f tests/115_lojas.sql
 echo "→ concorrência (4 workers × 200 tarefas)"
 tests/concorrencia/run.sh
 echo "→ funções (Deno): unidade + ponta a ponta"
