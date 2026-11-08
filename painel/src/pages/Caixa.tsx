@@ -99,6 +99,7 @@ export function Caixa() {
         const ligado = c.sincronizacao.ativa && c.sincronizacao.agente === "ativo";
         const fonte = Object.fromEntries(c.fontes.map((f) => [f.forma, f]));
         const ate = (u: string, f: string) => c.cobertura.find((x) => x.unidade_id === u && x.fonte === f)?.ate ?? null;
+        const desde = (u: string, f: string) => (c.cobertura.find((x) => x.unidade_id === u && x.fonte === f) as { desde?: string | null } | undefined)?.desde ?? null;
         const situacao = (a: { tipo: string; resolvido_em?: string | null }) => a.resolvido_em ? "resolvido" : ({ critico: "urgente", atencao: "atencao" } as Record<string, string>)[ALERTA[a.tipo]?.tom ?? ""] ?? "informativo";
         const todos = [...c.alertas, ...(situ.includes("resolvido") ? (c.resolvidos ?? []) : [])];
         const filtraData = per.atalho !== "7";
@@ -109,8 +110,9 @@ export function Caixa() {
         const cobertoAte = (u: string, forma: string, dia: string) => {
           const f = fonte[forma]?.fonte ?? "nenhuma";
           if (forma === "crediario") return true;
-          const a = ate(u, f === "deposito" ? "banco" : f);
-          return Boolean(a && a >= dia);
+          const fo = f === "deposito" ? "banco" : f;
+          const a = ate(u, fo), de = desde(u, fo);
+          return Boolean(a && a >= dia && (!de || de <= dia));
         };
         const situacaoDia = (d: { unidade_id: string; dia: string; caixa: number | null; soma_formas: number }, todas: { forma: string; faltando: number }[]) => {
           const conf = todas.filter((f) => conferivelForma(f.forma, fonte[f.forma]?.fonte ?? "nenhuma"));

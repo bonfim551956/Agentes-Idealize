@@ -29,3 +29,19 @@ begin
     execute v;
   end if;
 end $$;
+
+-- O arquivo da Stone de novembro não cobre outubro: a cobertura passa a ter início e fim. Dia antes do primeiro arquivo
+-- fica "aguardando arquivo", e não "faltando".
+do $$ declare v text;
+begin
+  v := pg_get_functiondef('public.painel_caixa(text,integer,date,date)'::regprocedure);
+  if v !~ '''desde'', \(select min\(m.data\)' then
+    v := replace(v, $a$'ate', (select max(m.data) from fin.movimentos m where m.conta_id in (select id from fin.contas where unidade_id = c.unidade_id and tipo = 'corrente'))) x$a$,
+      $a$'desde', (select min(m.data) from fin.movimentos m where m.conta_id in (select id from fin.contas where unidade_id = c.unidade_id and tipo = 'corrente')),
+         'ate', (select max(m.data) from fin.movimentos m where m.conta_id in (select id from fin.contas where unidade_id = c.unidade_id and tipo = 'corrente'))) x$a$);
+    v := replace(v, $a$'fonte', co.fonte, 'ate', co.ate)$a$,
+      $a$'fonte', co.fonte, 'ate', co.ate, 'desde', (select min(r.dia) from cx.recebimentos r where r.fonte = co.fonte and r.unidade_id = co.unidade_id))$a$);
+    if v !~ '''desde'', \(select min\(m.data\)' or v !~ '''desde'', \(select min\(r.dia\)' then raise exception 'cobertura do caixa não foi atualizada'; end if;
+    execute v;
+  end if;
+end $$;
